@@ -1,0 +1,17 @@
+#include <stdio.h>
+#include <limit.h>
+#include <float.h>
+main()
+{
+    signed char a;
+    unsigned char b;
+    signed short c;
+    unsigned short d;
+    signed int e;
+    unsigned int f;
+    signed long g;
+    unsigned long h;
+    printf("打印标准头的符号常量\n");
+    printf("signed char:%d~%d, unsigned char:%d~%d\n",SCHAR_MIN,SCHAR_MAX,CHAR_MIN,UCHAR_MAX);
+
+}
