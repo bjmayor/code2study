@@ -1,0 +1,48 @@
+#include <stdio.h>
+#define MAX 1024
+void escape(char s[],char t[]);
+void unescape(char s[],char t[]);
+main()
+{
+    char line[MAX];
+    char escape[MAX];
+    char unescape[MAX];
+    int i=0;
+    int c;
+    printf("please input something\n");
+    while((c=getchar())!=EOF && i<MAX-1)
+    {
+        line[i++]  = c;
+    }
+    line[i] = '\0';
+    printf("input string %s\n",line);
+    escape(escape, line);
+    printf("escape string %s\n",escape);
+    unescape(unescape, escape);
+    printf("unescape string %s\n",unescape);
+}
+void escape(char s[],char t[])
+{
+    int i=0;
+    int j=0;
+    int c;
+    while((c=t[i])!='\0')
+    {
+        switch (c)
+        {
+        case '\t':
+            s[j] = '\\';
+            s[j++] = 't';
+            break;
+        default:
+            s[j] = t[j];
+            break;
+        }
+        i++;
+        j++;
+    }
+}
+void unescape(char s[],char t[])
+{
+    
+}
