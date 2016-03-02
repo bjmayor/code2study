@@ -1,0 +1,8 @@
+try push -1
+try push 2
+try push -1
+try push 4
+try push 5
+try push 9
+try push -9
+	-9
