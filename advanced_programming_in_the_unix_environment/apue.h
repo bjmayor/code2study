@@ -64,6 +64,9 @@ int buf_args(char *, int (*func)(int, char**));
 int ptym_open(char *, int);
 int ptys_open(char *);
 
-#endif /* _APUE_H */
+#ifdef TIOCGWINSZ
+pid_t pty_fork(int *, char *, int ,const struct termios *, const struct winsize *);
+#endif
 
+#endif /* _APUE_H */
 
