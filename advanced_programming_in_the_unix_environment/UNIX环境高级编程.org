@@ -47,3 +47,82 @@
       3. 系统CPU时间。
 
 
+* 第二章 UNIX标准化及实现
+** UNIX标准化
+   所有标准化工作的一个重要部分是对每种实现必须定义的各种限制进行说明。
+  名词解释:
+  ISO(International Organization for Standardization), 国际标准化组织。
+  IEC(International Electrotechnical Commission),国际电子技术委员会。
+  IEEE(Institude of Electrical and Electronics Engineers), 电气与电子工程师协会。
+  POSIX(Portable Operating System Interface), 可移植的操作系统接口。
+  Single UNIX Specification, 单一UNIX规范。
+
+*** ISO C
+    ISO C标准的意图是提供C程序的可移植性，使其能适合于大量不同的操作系统，而不只是UNIX系统。
+    此标准不仅定义了C程序设计语言的语法和语义，还定义了其标准库。
+    
+    ISO C标准定义的头文件(24个区)
+    | 头文件       | FreeBSD5.2.1 | Linux2.4.22 | Mac OS X 10.3 | Solaris9 | 说明                     |
+    | <assert.h>   | *            | *           | *             | *        | 验证程序断言             |
+    | <complex.h>  | *            | *           | *             |          | 支持复数算术运算         |
+    | <ctypes.h>   | *            | *           | *             | *        | 字符类型                 |
+    | <errno.h>    | *            | *           | *             | *        | 出错码                   |
+    | <fenv.h>     |              | *           | *             | *        | 浮点环境                 |
+    | <float.h>    | *            | *           | *             | *        | 浮点常量                 |
+    | <inttypes.h> | *            | *           | *             | *        | 整形格式转换             |
+    | <iso646.h>   | *            | *           | *             | *        | 替代关系操作符宏         |
+    | <limits.h>   | *            | *           | *             | *        | 实现常量                 |
+    | <locale.h>   | *            | *           | *             | *        | 局部类别                 |
+    | <math.h>     | *            | *           | *             | *        | 数学常量                 |
+    | <setjmp.h>   | *            | *           | *             | *        | 非局部goto               |
+    | <signal.h>   | *            | *           | *             | *        | 信号                     |
+    | <stdarg.h>   | *            | *           | *             | *        | 可变参数表               |
+    | <stdbool.h>  | *            | *           | *             | *        | 布尔类型和值             |
+    | <stddef.h>   | *            | *           | *             | *        | 标准定义                 |
+    | <stdint.h>   | *            | *           | *             |          | 整形                     |
+    | <stdio.h>    | *            | *           | *             | *        | 标准IO库                 |
+    | <stdlib.h>   | *            | *           | *             | *        | 实用程序函数             |
+    | <string.h>   | *            | *           | *             | *        | 字符串操作               |
+    | <tgmath.h>   |              | *           |               |          | 通用类型数学宏           |
+    | <time.h>     | *            | *           | *             | *        | 时间和日期               |
+    | <wchar.h>    | *            | *           | *             | *        | 扩展的多字节和宽字符支持 |
+    | <wctype.h>   | *            | *           | *             | *        | 宽字符分类和映射支持     |
+    
+*** IEEE POSIX
+    可移植的操作系统接口，原来指的是操作系统接口，后来扩展成包括很多标记为1003的标准及标准草案，包括shell和实用程序。
+* 第三章 文件I/O
+** 引言
+   UNIX系统中的大多数文件I/O只需要用到5个函数:open、read、write、lseek以及close。
+   
+   本章说明的函数经常被称为不带缓冲的I/O。术语 **不带缓冲** 指的是每个read和write都调用内核的一个系统调用。
+
+   多个进程共享文件 相关的函数：dup、fcntl、sync、fsync和ioctl
+
+** 文件描述符
+   文件描述符的变化范围是0~OPEN_MAX。
+** open函数
+
+   #include <fcntl.h>
+   int open(const char *pathname, int oflag, ... /* mode_t mode */);
+
+   O_DSYNC和O_SYNC标志有微妙的区别。仅当文件属性需要更新以反映文件数据变化(例如，更新文件大小以反映文件中包含了更多的数据)时，O_DSYNC标志
+   才影响文件属性。而设置O_SYNC标志后，数据和属性总是同步更新。当文件用O_DSYNC标志打开，在重写其现有的部分内容时，文件时间属性不会同步更新。与此相反，如果文件是用O_SYNC标志打开，那么对该文件的每一次
+   write操作都将在write返回前更新文件时间, 这与是否改写现有字节或增写文件无关。
+   
+   由open返回的文件描述符一定是最小的未用描述符数值。
+   
+   若_POSIX_NNO_TRUNC有效，则在整个路径名超过PATH_MAX, 或路径名中任一文件名超过NAME_MAX时，返回出错状态，并将errno设置为ENAMETOOLONG。
+   
+** create函数
+
+   #include <fcntl.h>
+   int create(const char *pathname, mode_t mode);
+   此函数等效于open(pathname, O_WRONLY | O_CREATE | O_TRUNC, mode);
+
+** close函数
+   
+   #include <fcntl.h>
+   int close(int filedes);
+
+   关闭一个文件时还会释放该进程加在该文件上的所有 **记录锁**
+   当一个进程终止时，内核自动关闭它所有打开的文件。
