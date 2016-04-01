@@ -19,7 +19,7 @@
 #include <signal.h>
 #define MAXLINE 4096
 
-#define FILE_MODE (S_IRUSER | S_IWUSER | S_IRGRP | S_IROTH)
+#define FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 #define DIR_MODE (FILE_MODE | S_IXUSER | S_IXGRP | S_IXOTH)
 
 typedef void Sigfunc(int);
