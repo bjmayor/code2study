@@ -391,5 +391,43 @@
    1. 拥有该文件
    2. 拥有该目录
    3. 是超级用户
+** chown、fchown和lchown函数
+   
+   #include <unistd.h>
+   int chown(const char *pathname, uid_t owner, gid_t group);
+   int fchown(int filedes, uid_t owner, gid_t group);
+   int lchown(const char *pathname, uid_t owner, gid_t group);
+
+   在符号链接的情况下，lchown更改符号链接本身的所有者，而不是该符号链接所指向的文件。
+   
+   如若两个参数owner或group中的任意一个是-1, 则对应的ID不变。
+   基于BSD的系统一直规定只有超级用户才能更改一个文件的所有者。这样做的原因是防止用户改变其文件的所有者从而摆脱磁盘空间限额对他们的限制。系统V则允许任一用户更改他们所拥有的文件的所有者。
+   
+   若_POSIX_CHOWN_RESTRICTED对指定的文件起作用，则
+   1. 只有超级用户进程能更改该文件的用户ID。
+   2. 若满足下列条件，一个非超级用户进程就可以更改该文件的组ID:
+      1. 进程拥有此文件(其有效用户ID等于该文件的用户ID)。
+      2. 参数owner等于-1或文件的用户ID,并且参数group等于进程的有效组ID或进程的附加组ID之一。
+
+   如果这些函数由非超级用户进程调用，则在成功返回时，该文件的设置用户ID位和设置组ID位都会被清除。
+** 文件长度
+   对于目录，文件长度通常是一个数(例如16或512)的倍数。
+   对于符号链接，文件长度是文件名中的实际字节数。
+
+*** 文件中的空洞
+    ls 看的是文件长度，du看的是文件所使用的磁盘空间总量。
+    正常的I/O操作读取整个文件长度，会把空洞读成0,如果使用实用程序(如cat)复制这种文件，那么所有空洞会被填满，填写为0。从而实际占用磁盘空间。
+    
+    大文件,du报告的长度比ls的长，因为文件系统使用了若干块以存放指向实际数据块的各个指针。
+    
+** 文件截短
+   #include <unistd.h>
+   int truncate(const char *pathname, off_t length);
+   int ftruncate(int filedes, off_t length);
+
+   这两个函数将把现有的文件长度截短为length字节。如果文件以前的长度>length,则length以后的数据不能再访问，如果以前的长度短于length,则其效果与系统有关。遵循XSI的系统会增加文件长度，产生空洞。
+
+** 文件系统
+
 
    
