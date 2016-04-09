@@ -55,3 +55,4 @@ static void err_doit(int errnoflag, int error, const char *fmt, va_list ap)
     fputs(buf, stderr);
     fflush(NULL);
 }
+
