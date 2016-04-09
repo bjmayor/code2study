@@ -585,3 +585,25 @@
        ino_t d_ino;
        char d_name[NAME_MAX + 1];
    }
+ 
+** chdir、fchdir和getcwd函数
+   每个进程都有一个当前工作目录，此目录是搜索所有相对路径名的起点。当前工作目录是进程的一个发生，起始目录则是登录名的一个属性。
+
+   进程通过chdir或fchdir函数可以更改当前工作目录。
+   #include <unistd.h>
+   int chdir(const char *pathname);
+   int lchdir(int filedes);
+   
+   内核为每个进程只保存指向该目录v节点的指针等目录本身的信息，并不保存该目录的完整路径名。
+   通过getcwd可以取得完整路径名。
+   #include <unistd.h>
+   char *getcwd(char *buf, size_t size);
+   
+** 设备特殊文件
+   st_dev 与  st_rdev容易引起混淆。
+   1. 每个文件系统所在的存储设备都由其主、次设备号表示。主设备号标识设备驱动程序，有时编码为与其通信的外设板；次设备号标识特定的子设备。次设备号标识分区?
+   2. 可以用宏major和minor来访问主、次设备号。
+   3. 系统中与每个文件名关联的st_dev值是文件系统的设备号，该文件系统包含了这一文件名以及与其对应的i节点。
+   4. 只有字符特殊文件和块特殊文件才有st_rdev值，此值包含实际设备的设备号。
+      
+   
