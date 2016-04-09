@@ -445,5 +445,37 @@
    
    每个文件系统各自对它们的i结点进行编号，因此目录项中的i节点编号数指向同一文件系统中的相应i节点，不能使一个目录项指向另一个文件系统的i节点。
    
+** link、unlink、remove和rename函数
 
+   #include <unistd.h>
+   int link(const char *existingpath, const char *newpath);
+
+   创建新目录项newpath, 它引用现有的文件existingpath。
+   创建新目录项以及增加链接计数应当是个原子操作。
+   很多文件系统不允许对于目录的硬链接(可能形成循环)
+   
+   删除目录项，可以调用unlink函数。
+   
+   #include <unistd.h>
+   int unlink(const char *pathname);
+
+   只有当链接计数达到0时，该文件的内容才可以被删除。另一个条件也会阻止删除文件的内容--只要有进程打开了该文件，其内容也不能删除。
+   关闭一个文件时，内核首先检查打开该文件的进程数。如果该数达到0，然后内核检查其链接数，如果这个数也是0，那么就删除该文件的内容。
+  
+   上面的特性经常用来确保即使是在该程序崩溃时，它所创建的临时文件也会不会遗留下来。进程用open或creat创建一个文件，然后立即调用unlink。
+   
+
+  remove函数解除对一个文件或目录的链接。对于文件，remove = unlink, 对于目录， remove = rmdir 
+  #include <stdio.h>
+  int remove(const char *pathname);
+  
+  文件或目录用rename函数更名。
+  #include <stdio.h>
+  int rename(const char *oldname, const char *newname);
+  
+  1. 如果oldname指的是一个文件而不是目录，那么为该文件/符号链接更名。
+  2. 如若oldname指的是一个目录，则为该目录更名。
+  3. 如若oldname或newname引用符号链接，则处理的是符号链接本身，而不是它所引用的文件。
+  4. 作为一个特例，如果oldname=newname,函数直接返回。
+  如若newname已存在，则要求进程对其有写权限。另外，调用进程需要对包含oldname以及包含newname的目录具有写和执行权限。
    
