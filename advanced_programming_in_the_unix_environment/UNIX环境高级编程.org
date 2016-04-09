@@ -478,4 +478,71 @@
   3. 如若oldname或newname引用符号链接，则处理的是符号链接本身，而不是它所引用的文件。
   4. 作为一个特例，如果oldname=newname,函数直接返回。
   如若newname已存在，则要求进程对其有写权限。另外，调用进程需要对包含oldname以及包含newname的目录具有写和执行权限。
+  
+** 符号链接
+   符号链接是指向一个文件的间接指针，它与硬链接不同，硬链接直接指向文件的i结点。引入符号链接的原因是为了避免硬链接的一些限制：
+   1. 硬链接通常要求链接和文件位于同一文件系统
+   2. 只有超级用户才能创建指向目录的硬链接
+      
+      各个函数对符号链接的处理
+      | 函数     | 不跟随符号链接 | 跟随符号链接 |
+      |----------+----------------+--------------|
+      | access   |                | *            |
+      | chdir    |                | *            |
+      | chmod    |                | *            |
+      | chown    | *              | *            |
+      | creat    |                | *            |
+      | lchown   | *              |              |
+      | link     |                | *            |
+      | lstat    | *              |              |
+      | open     |                | *            |
+      | opendir  |                | *            |
+      | pathconf |                | *            |
+      | readlink | *              |              |
+      | remove   | *              |              |
+      | rename   | *              |              |
+      | stat     |                | *            |
+      | truncate |                | *            |
+      | unlink   | *              |              |
+      |----------+----------------+--------------|
+      
+      有个特例，同时用O_CREATE和O_EXCL两者调用open函数。在些情况下，若路径名引用符号链接，open将出错返回，并将errno设置为EEXIST。这种处理方式的意图是堵塞一个安全性漏洞，
+      使具有特权的进程不会被诱骗对不适当的文件进行写操作。
    
+** symlink和readlink函数
+   symlink创建符号链接
+   
+   #include <unistd.h>
+   int symlink(const char *actualpath, const chat *sympath);
+   
+   因为open函数会跟随符号链接，所以需要一种方法打开链接本身，并读该链接中的名字。readlink提供
+
+   #include <unistd.h>
+   ssize_t readlink(const char * restrict pathname, char *restrict buf, size_t bufsize);
+   此函数组成了open、read、close。成功返回读入buf的字节数。。 **需要注意的是buf不以null字符终止**。
+
+** 文件的时间
+   与每个文件相关的三个时间值
+   | 字段     | 说明                    | 例子         | ls选项 |
+   |----------+-------------------------+--------------+--------|
+   | st_atime | 文件数据的最后访问时间  | read         | -u     |
+   | st_mtime | 文件数据的最后修改时间  | write        | 默认   |
+   | st_ctime | i节点状态的最后修改时间 | chmod、chown | -c     |
+   |----------+-------------------------+--------------+--------|
+
+   注意，系统并不保存对一个i节点的最后一次访问时间，所以access和stat函数并不更改这三个时间中的任一个。
+** utime函数
+   一个文件的访问和修改时间可用utime函数更改。
+   
+   #include <utime.h>
+   int utime(const char *pathname, const struct utimbuf *times);
+
+   数据结构如下:
+   struct utimbuf {
+       time_t actime;/* access time */
+       time_t modtime;/* modification time */
+   }
+   
+   此函数的操作以及执行它所要求的特权取决于times参数是否是NULL。
+   1. 如果times是一个空指针，则访问时间和修改时间两者都设置为当前时间。为了执行此操作必须满足下列两条件之一：进程的有效用户ID必须等于该文件的所有者ID；或者进程对该文件有写权限。
+   2. 如果times是非空指针，则访问时间和修改时间被设置为times所指向结构中的值。此时，进程的有效用户ID必须等于该文件的所有者ID,或者进程必须是一个超级用户进程。
