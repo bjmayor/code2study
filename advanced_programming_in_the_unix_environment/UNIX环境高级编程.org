@@ -668,7 +668,70 @@
    inf fflush(FILE *fp);
 
    用于强制冲洗一个流。若fp为NULL, 则此函数将导致所有输出流被冲洗。
+** 打开流
    
+   #include <stdio.h>
+   FILE *fopen(const char *restrict pathname, const char *restrict type);
+   FILE *freopen(const char *restrict pathname, const char *restrict type, FILE *restrict fp);
+   FILE *fdopen(int filedes, const char *type);
+
+   1. fopen打开一个指定的文件
+   2. freopen,在指定的流上打开文件。如果已经打开，则先关闭。若流已定向，则清除该定向。主要用于预定义的流：标准输入、标准输出和标准出错。
+   3. fdopen获取一个现有的文件描述符，并使一个标准的I/O流与该描述符相结合。此函数常用于由创建管道和网络通信通道函数返回的描述符。
+      
+
+   当以读和写类型打开一文件时(type中+符号),具有下列限制：(同一块缓冲只有输入/输出数据，不能同时存在)
+   1. 如果中间没有fflush、fseek、fsetpos或rewind, 则在输出的后面不能直接跟随输入。
+   2. 如果中间没有fseek、fsetpos或rewind, 或者一个输入操作没有到达文件尾端，则在输入操作之后不能直接跟随输出。
 
       
+   调用fclose来关闭一个打开的流
+   
+   #include <stdio.h>
+   int fclose(FILE *fp);
+
+   在该文件被关闭之前，冲洗缓冲区中的输出数据。丢弃缓冲区中的任何输入数据。
+
+   当一个进程正常终止时，则所有带未写缓冲数据的标准I/O流都会被冲洗，所有打开的标准I/O流都会被关闭。
+** 读和写流
+   一旦打开了一个流，则可在三种不同类型的非格式化I/O中进行选择：
+   1. 每次一个字符的I/O。
+   2. 每次一行的I/O。
+   3. 直接I/O,也叫二进制I/O，每次读写一个对象。(fread和fwrite支持)。
+
+*** 输入函数
+    每次一个字符的I/O
+    #include <stdio.h>
+    int getc(FILE *fp);
+    int fgetc(FILE *fp);
+    int getchar(void);
+
+    getc可以实现为宏，则fgetc只能是函数。
+
+    注意：不管是出错还是到达文件尾端，这三个函数都返回同样的值。为了区分这两种不同的情况，必须调用ferror或feof。
+    #include <stdio.h>
+    int ferror(FILE *fp);
+    int feof(FILE *fp);
+    void clearerr(FILE *fp);
+
+    在大多数实现中，为每个流在FILE对象中维持了两个标志：
+    1. 出错标志。
+    2. 文件结束标志。
+    调用clearerr则清除这两个标志。
+
+    从流中读取数据以后，可以调用ungetc将字符再压送回流中。
+    #include <stdio.h>
+    int ungetc(int c, FILE *fp);
+
+    虽然ISO C允许实现支持任何次数的回送，但是它要求实现提供一次只送回一个字符。我们不能期望一次能送回多个字符。??? **为什么这样设定**
+ 
+   回送的字符不必一定是上一次读到的字符。不能回送EOF。但是当已经到达文件尾端时，仍可以回送一个字符。下次读将返回该字符，再次读则返回EOF。之所以这样做的原因是一次成功的ungetc调用
+   会清除该流的文件结束标志。 
+    
+*** 输出函数
+    对应于上面的三个输入函数。有三个输出函数
+    #include <stdio.h>
+    int putc(int c, FILE *fp);
+    int fputc(int c, FILE *fp);
+    int putchar(int c);
    
