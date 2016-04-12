@@ -771,3 +771,32 @@
 
      
    在不同系统之间交换二进制数据的实际解决方法是使用较高级的协议。
+** 定位流
+   有三种方法定位标准I/O流。
+   1. ftell和fseek函数。
+   2. ftello和fseeko函数。
+   3. fgetpos和fsetpos函数。
+
+     
+   需要移植到非UNIX系统上运行的应用程序应当使用fgetpos和fsetpos。
+
+   #include <stdio.h>
+   long ftell(FILE *fp);
+   int fseek(FILE *fp, long offset, int whence);
+   void rewind(FILE *fp);
+   
+
+   对于一个二进制文件，其文件位置指示器是从文件起始位置开始度量，并以字节为度量单位。
+   对于文本文件，它们的文件当前位置可能不以简单的字节偏移量来度量。为了定位一个文本文件，whence一定要是SEEK_SET, 而且offset只能有两种值：0，或是对该文件调用ftell所返回的值。
+
+   
+   ftello和ftell只是返回值类型不一样。
+   #include <stdio.h>
+   off_t ftello(FILE *fp);
+   int fseeko(FILE *fp, off_t offset, int whence);
+   
+   #include <stdio.h>
+   int fgetpos(FILE *restrict fp, fpos_t *restrict pos);
+   int fsetpos(FILE *fp, const fpos_t *pos);
+
+   
