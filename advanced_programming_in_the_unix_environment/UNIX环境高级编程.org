@@ -735,3 +735,39 @@
     int fputc(int c, FILE *fp);
     int putchar(int c);
    
+** 每次一行I/O
+*** 输入函数
+    #include <stdio.h>
+    char *fgets(char *restrict buf, int n, FILE *restrict fp);
+    char *gets(char *buf);
+    
+    缓冲区总是以null字符结尾。
+    
+    gets并不推荐使用，因为不能指定缓冲区的长度，可能造成缓冲区溢出(如若该行长于缓冲区长度），写到缓冲区之后的存储空间中，从而产生不可预料的后果。
+    
+    **处处是坑，难道需要更高级的语言，来避免这些坑。但专家级的程序员一定需要知道这些坑，并能直面这些坑**
+*** 输出函数
+    #include <stdio.h>
+    int fputs(const char *restrict str, FILE *restrict fp);
+    int puts(const char *str);
+    
+    如果总是使用fgets和fputs, 那么就会熟知在每行终止处我们必须自己处理换行符。
+    
+** 二进制I/O
+   下列两个函数执行二进制I/O操作
+   #include <stdio.h>
+   size_t fread(void *restrict ptr, size_t size, size_t nobj, FILE *restrict fp);
+   size_t fwrite(const void *restrict ptr, size_t size, size_t nobj, FILE *restrict fp);
+   
+   两种常用的用法：
+   1. 读或写一个二进制数组。
+   2. 读或写一个结构。
+      
+   
+   使用二进制I/O的基本问题是， 它只能用于读在同一系统上已写的数据。
+   但是我们常遇到在一个系统上写的数据，要在另一个系统上进行处理。这种情况下，这两个函数可能不能正常工作。
+   1. 在一个结构中，同一成员的偏移量可能因编译器和系统而异。即使在同一个系统上，一个结构的二进制存放方式也可能因编译器选项的不同而不同。
+   2. 用来存储多字节整数和浮点值的二进制格式在不同的机器体系结构间也可能不同。
+
+     
+   在不同系统之间交换二进制数据的实际解决方法是使用较高级的协议。
