@@ -798,5 +798,44 @@
    #include <stdio.h>
    int fgetpos(FILE *restrict fp, fpos_t *restrict pos);
    int fsetpos(FILE *fp, const fpos_t *pos);
+** 格式化I/O
+*** 格式化输出
+    4个函数
+    
+    #include <stdio.h>
+    int printf(const char *restrict format, ...);
+    int fprintf(FILE *restrict fp, const char *restrict format, ...);
+    
+    int sprintf(char *restrict buf, const char *restrict format, ...);
+    int snprintf(char *restrict buf, size_t n, const char *restrict format, ...);
+    
+    sprintf在该数组的尾端自动加一个null字节，但该字节不包括在返回值中。
+    
+    注意，sprintf函数可能会造成由buf指向的缓冲区的溢出。调用者有责任确保该缓冲区足够大。为了解决这个问题，引入的snprintf函数。
+    
+    下列4种printf族的变体类似于上面的4种，但是可变参数表(...)代换成了arg。
+    
+    #include <stdarg.h>
+    #include <stdio.h>
+    
+    int vprintf(const char *restrict format, va_list arg);
+    int vfprintf(FILE *restrict fp, const char *restrict format, va_list arg);
+    
+    int vsprintf(char *restrict buf, const char *restrict format, va_list arg);
+    int vsnprintf(char *restrict buf, size_t n, const char *restrict format, va_list arg);
+    
+*** 格式化输入
+    3个scanf函数
+    
+    #include <stdio.h>
+    int scanf(const char *restrict format, ...);
+    int fscanf(FILE *restrict fp, const char *restrict format, ...);
+    int sscanf(const char *restrict buf, const char *restrict format, ...);
+    
+    同printf族一样，scanf族也支持函数使用由<stdarg.h>说明的可变参数表。
 
-   
+    #include <stdarg.h>
+    #include <stdio.h>
+    int vscanf(const char *restrict format, va_list arg);
+    int vfscanf(FILE *restrict fp, const char *restrict format, va_list arg);
+    int vsscanf(const char *restrict buf, const char *restrict format, va_list arg);
