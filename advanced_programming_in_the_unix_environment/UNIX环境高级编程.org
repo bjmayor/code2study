@@ -888,3 +888,70 @@
    ASI, 使用了映射文件--mmap函数。ASI使用指针力图减少数据复制量。
    
    不可移植，但性能更好的 uClibc C库和newlibc C库，适用于嵌入式系统。
+* 系统数据文件和信息
+** 口令文件
+   <pwd.h> paswd结构
+   /etc/passwd文件中的字段
+   | 说明         | struct passwd成员 |
+   |--------------+-------------------|
+   | 用户名       | char *pw_name     |
+   | 加密口令     | char *pw_passwd   |
+   | 数值用户ID   | uid_t pw_uid      |
+   | 数值组ID     | uid_t pw_gid      |
+   | 注释字段     | char *pw_gecos    |
+   | 初始工和目录 | char *pw_dir      |
+   | 初始Shell    | char *pw_shell    |
+   | 用户访问类   | char *pw_class    |
+   | 下次更改口令文件 | time_t pw_change  |
+   | 账户到期时间     | time_t pw_expire  |
+   
+   为了阻止一个特定用户登录系统，有几种办法：
+   1. 初始Shell 设置为 /dev/null
+   2. 初始shell 设置为 /bin/false
+   3. 初始shell 设置为 /bin/true
+   4. 初始shell 设置为 nologin,需要系统支持。
+   
+   有些系统提供vipw命令来修改/etc/passwd文件。
+   提供finger命令的某些系统支持注释字段中的附加信息。
+   
+   #include <pwd.h>
+   struct passwd *getpwuid(uid_t uid);
+   struct passwd *getpwna(const char *name);
+   
+   下列三个函数可用于读取整个口令文件。
+   #include <pwd.h>
+   struct passwd *getpwent(void);//打开文件
+   void setpwent(void);//回到文件开头
+   void endpwent(void);//关闭文件
+   
+
+** 阴影文件
+   /etc/shadow文件中的字段
+   | 说明                       | struct spwd成员 |
+   |----------------------------+-----------------|
+   | 用户登录名                 | char *sp_namp   |
+   | 加密口令                   | char *sp_pwdp   |
+   | 上次更改口令以来经过的时间 | int sp_lstchg   |
+   | 经过多少天后允许更改       | int sp_min      |
+   | 要求更改尚余天数           | int sp_max      |
+   | 到期警告天数               | int sp_warn     |
+   | 账户不活动之前尚余天数     | int sp_inact    |
+   | 账户到期天数               | int sp_expire   |
+   | 保留                       | unsigned int sp_flag |
+   
+   一组类似的函数访问阴影口令文件。
+   
+   #include <shadow.h>
+   struct spwd *getspnam(const char *name);
+   struct spwd *getspent(void);
+   void setspent(void);
+   void endspent(void);
+   
+   mac没有阴影口令文件，类似的参考/etc/master.passwd
+** 组文件
+** 附加组ID
+** 实现的区别
+** 其他数据文件
+** 登录账户记录
+** 系统标识
+** 时间和日期例程
