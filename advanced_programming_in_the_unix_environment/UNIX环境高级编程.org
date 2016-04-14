@@ -949,9 +949,70 @@
    
    mac没有阴影口令文件，类似的参考/etc/master.passwd
 ** 组文件
+   /etc/group文件中的字段
+   | 说明                     | struct group成员 |
+   |--------------------------+------------------|
+   | 组名                     | char *gr_name    |
+   | 加密口令                 | char *gr_passwd  |
+   | 数值组ID                 | int gr_gid       |
+   | 指向各用户名的指针的数组 | char **gr_mem   |
+   
+   查看数组名或数值组ID
+   #include <grp.h>
+   struct group *getgrgid(gid_t gid);
+   struct group *getgrnam(const char *name);
+
+   
+   搜索整个组文件函数
+   #include <grp.h>
+   struct group *getgrent(void);
+   void setgrent(void);
+   void endgrent(void);
+
 ** 附加组ID
+   口令newgrp可以更改组id。
+   
+   为了获取和设置附加组ID,提供了下列三个函数：
+   #include <unistd.h>
+   int getgroups(int gidsetsize, gid_t grouplist[]);
+   
+   #include <grp.h> /* on linux */
+   #include <unistd.h> /* on freebsd, mac os x , amd solaris */
+   int setgroups(int ngroups, const gid_t grouplist[]);
+
+   #include <grp.h> /* on linux and solaris */
+   #include <unistd.h> /* on freebsd and mac os x */
+   int initgroups(const char *username, gid_t basegid);
 ** 实现的区别
+
 ** 其他数据文件
+   存取系统数据文件的类似例程 
+   | 说明 | 头文件     | 数据文件       | 结构     | 附加的关键字查找函数             |
+   |------+------------+----------------+----------+----------------------------------|
+   | 口令 | <pwd.h>    | /etc/passwd    | passwd   | getpwnam、getpwuid               |
+   | 组   | <grp.h>    | /etc/group     | group    | getgrname、getgrgid              |
+   | 阴影 | <shadow.h> | /etc/shadow    | spwd     | getspnam                         |
+   | 主机 | <netdb.h>  | /etc/hosts     | hostent  | gethostbyname、gethostbyaddr     |
+   | 网络 | <netdb.h>  | /etc/networks  | netent   | getnetbyname、getnetbyaddr       |
+   | 协议 | <netdb.h>  | /etc/protocols | protoent | getprotobyname、getprotobynumber |
+   | 服务 | <netdb.h>  | /etc/services  | servent  | getservbyname、getservbyport      |
+  
 ** 登录账户记录
+   大多数UNIX系统都提供下列两个数据文件：
+   1. utmp文件，记录当前登录进系统的各个用户。
+   2. wtmp文件，跟踪各个登录和注销事件。
+
+   struct utmp {
+       char ut_line[8]; /* tty line : "ttyh0", "ttyd0" ... */
+       char ut_name[8];/ login name */
+       long ut_time; /* seconds since Epoch */
+
+   }
+   
+   登录时，login程序填写此类结构，然后写入utmp文件，同时添加至wtmp文件。
+   注销时，init进程将utmp相应的记录擦除，并将一个新记录添加到wtmp文件。
+   
+   who程序读取utmp文件。 last程序读取wtmp文件。
 ** 系统标识
+
 ** 时间和日期例程
