@@ -1014,5 +1014,59 @@
    
    who程序读取utmp文件。 last程序读取wtmp文件。
 ** 系统标识
+   uname函数。
+   #include <sys/utsname.h>
+   int uname(struct utsname *name);
+   
+   struct utsname {
+       char sysname[];/* name of operating system */
+       char nodename[]; /* name of this node */
+       char release[]; /*current release of operating system */
+       char version[]; /* current version of this release*/
+       char machine[]; /* name of hardware type*/
+   }
+   
+   gethostname获取TCP/IP网络上主机的名字。
+   #include <unistd.h>
+   int gethostname(char *name, int namelen);
+   主机名的最大名字长度 HOST_NAME_MAX。
 
+   hostname 用于获取和设置主机名。
 ** 时间和日期例程
+   日历时间包括日期和时间。
+   UNIX在这方面与其他操作系统的区别是：
+   1. 以国际标准时间而非本地时间计时；
+   2. 可自动进行转换，例如变换到夏时制
+   3. 将时间和日期作为一个量值保存。
+      
+
+   time函数返回当时时间和日期
+   #include <time.h>
+   time_t time(time_t *calptr);
+   
+   在BSD派生的系统中，调用settimeofday,用于对内核中的当前时间设置初始值。
+   #include <sys/time.h>
+   int gettimeofday(struct timeval *restrict tp, void *restrict tzp);
+   tzp的唯一合法值是NULL,其他值则将产生不确定的结果。
+
+   struct timeval{
+       time_t tv_sec;
+       long tv_usec;
+   }
+   
+   localtime和gmtime把time_t转成tm结构，tm结构包括年、月、日、时、分、秒、周日等。
+   struct tm{ /* a broken-down time */
+       int tm_sec; /* seconds after the minute:[0-60]*/
+       int tm_min; /* minutes after the hour: [0-59] */
+       int tm_hour:/* hours after midnight: [0-23] */
+       int tm_day: /* day of the month */
+       int tm_mon; /* months since January: [0-11] */
+       int tm_year; /* years sinsce 1900 */
+       int tm_wday; /* days since Sunday:[0-6] */
+       int tm_yday; /* days since January 1: [0-365]*/
+       int tm_isdst; /* daylight saving time flag: <0, 0, >0 */
+   }
+   
+   秒可以越过59的理由是可以表示润秒。
+   **闰秒（或称跳秒）是对UTC(协调世界时)作出加一秒或减一秒的调整，用来协调不均匀的地球自转时间与原子时间之间的差值不超过0.9秒。**
+
