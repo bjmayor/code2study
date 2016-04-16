@@ -56,6 +56,7 @@
   IEEE(Institude of Electrical and Electronics Engineers), 电气与电子工程师协会。
   POSIX(Portable Operating System Interface), 可移植的操作系统接口。
   Single UNIX Specification, 单一UNIX规范。
+  ANSI C(American National Standards Institute),美国国家标准协会。
 
 *** ISO C
     ISO C标准的意图是提供C程序的可移植性，使其能适合于大量不同的操作系统，而不只是UNIX系统。
@@ -1090,4 +1091,69 @@
    * %V, 若某周包含了1月1日，而且至少包含了其后的另外3天，那么该周是一年的中第一周，否则该周被认为是上一年的最后一周。(周一被视为每周的第一天)
      
 * 进程环境
+** main函数
+   int main(int argc, char *argv[]);
+
+   当内核执行C程序时(使用一个exec函数), 在调用main函数前先调用一个特殊的启动例程。
+   可执行程序文件将此启动例程指定为程序的起始地址--这是由连接编译器设置的，而连接编译器则由C编译器调用。
+   启动例程从内核取得命令行参数和环境变量值，然后为按上述方式调用main函数做好安排。
+   **启动例程是啥?**
+   需要用到编译原理
+   gcc main.o -o main 其实是类似调用的
+   ld /usr/lib/crt1.o /usr/lib/crti.o main.o -o main -lc -dynamic-linker /lib/ld-linux.so.2
+   启用例程便是指的/usr/lib/ctr1.o中的start函数。
+** 进程终止
+   5种正常终止
+   1. 从main返回。
+   2. 调用exit
+   3. 调用_exit或_Exit。
+   4. 最后一个线程从其启动例程返回。
+   5. 最后一个线程调用pthread_exit
+
+   3种异常终止
+   1. 调用abort
+   2. 接到一个信号并终止
+   3. 最后一个线程对取消请求做出响
+      
+   启动例程调用：
+   exit(main(argc,argv));
+
+*** exit函数
+    有3个函数用于正常终止程序：_exit和_Exit立即进入内核,exit则先执行一些清理处理(包括调用执行各终止处理程序，关闭所有标准I/O流等），然后进入内核。
+    #include <stdlib.h>
+    void exit(int status);
+    void _Exit(int status);
+    
+    #include <unistd.h>
+    void _exit(int status);
+    
+    以下三种情况，进程的终止状态是未定义的：
+    1. 调用这些函数时(以上3个），不带终止状态。
+    2. main执行了一个无返回值的return语句。
+    3. main没有声明返回类型为整形。
+    
+*** atexit函数
+    上文提到exit会执行一些清理操作，这些清理操作是由atexit登录的，按ISO C的规定，一个进程可以登记多达32个函数。
+    这些程序称为终止处理程序。
+    #include <stdlib.c>
+    int atexit(void (*func)(void));
+    
+    exit调用这些函数的顺序与登记顺序相反。同一函数如若登记多次，也地调用多次。
+    
+    根据ISO C和POSIX.1, exit首先调用各终止处理程序，然后按需多次调用fclose，关闭所有打开流。
+    POSIX.1扩展了ISO C标准，它指定如若程序调用exec函数族中的任一函数，则将清除所有已安装的终止处理程序。
+
+    内核使程序执行的唯一入口是调用一个exec函数。
+    进程自愿终止的唯一方法是显示或隐式地调用_exit或_Exit。
+    
+    
+** 命令行参数
+   调用exec的进程可将命令行参数传递给该新程序，这是UNIX SHELL的一部分常规操作。
+** 环境表
+** C程序的存储空间布局
+** 共享库
+** 存储器分配
+** 环境变量
+** setjmp和longjmp函数
+** getrlimit和setrlimit函数
    
