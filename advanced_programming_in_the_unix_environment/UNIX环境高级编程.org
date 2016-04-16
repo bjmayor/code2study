@@ -1070,3 +1070,24 @@
    秒可以越过59的理由是可以表示润秒。
    **闰秒（或称跳秒）是对UTC(协调世界时)作出加一秒或减一秒的调整，用来协调不均匀的地球自转时间与原子时间之间的差值不超过0.9秒。**
 
+   #include <time.h>
+   struct tm *gmtime(const time_t *calptr);/*转成国际标准时*/
+   struct tm *localtime(const time_t *calptr);/*转成本地时间,受TZ影响*/
+   
+   #include <time.h>
+   time_t mktime(struct tm *tmptr);/*转成日历时间, tmptr是本地时间,受TZ影响*/
+   
+   #include <time.h>
+   char *asctime(const struct tm *tmptr);/*把tm结构的时间转成字符串时间*/
+   char *ctime(const time_t *calptr);/*把日历时间转成字符串时间,受TZ影响*/
+   
+   #include <time.h>
+   size_t strftime(char *restrict buf, size_t maxsize, const char *restrict format, const struct tm *restrict tmptr);/*格式化时间,受TZ影响*/
+   
+   第一周有不同的定义：
+   * %U, 包含该年第一个星期日的周为第一周。
+   * %W，包含该年第一个星期一的周为第一周。
+   * %V, 若某周包含了1月1日，而且至少包含了其后的另外3天，那么该周是一年的中第一周，否则该周被认为是上一年的最后一周。(周一被视为每周的第一天)
+     
+* 进程环境
+   
