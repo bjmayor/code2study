@@ -1211,8 +1211,62 @@
    3. 快速适配
    4. alloca函数
 
-** 
 ** 环境变量
+   #include <stdlib.h>
+   char *getenv(const char *name);
+   此函数返回一个指针，它指向name=value字符串中的value。注意，环境表中，指针数组批向的其实是name=value的字符串。
+   Single UNIX Specification定义的环境变量
+   | 变量        | 说明                           |
+   |-------------+--------------------------------|
+   | COLUMNS     | 终端宽度                       |
+   | DATEMSK     | getdate(3)模块文件路径名       |
+   | HOME        | 起始目录                       |
+   | LANG        | 本地名                         |
+   | LC_ALL      | 本地名                         |
+   | LC_COLLATE  | 本地排序名                     |
+   | LC_CTYPE    | 本地字符分类名                 |
+   | LC_MESSAGES | 本地消息名                     |
+   | LC_MONETARY | 本地货币编辑名                 |
+   | LC_NUMERIC  | 本地数字编辑名                 |
+   | LC_TIME     | 本地日期/时间格式名            |
+   | LINES       | 终端高度                       |
+   | LOGNAME     | 登录名                         |
+   | MSGVERB     | fmtmsg(3)处理的消息组成部分    |
+   | NLSPATH     | 消息类模板序列                 |
+   | PATH        | 搜索可执行文件的路径前缀列表   |
+   | PWD         | 当前工作目录的绝对路径名       |
+   | SHELL       | 用户首选的shell名              |
+   | TERM        | 终端类型                       |
+   | TMPDIR      | 在其中创建临时文件的目录路径名 |
+   | TZ          | 时区信息                       |
+   |-------------+--------------------------------|
+   
+   命令ENV可以查看环境变量。
+   我们也能设置环境变量的值。我们能影响的只是当前进程及调用的任何子进程的环境，但不能影响父进程的环境，这通常是一个shell进程。
+
+
+   #include <stdlib.h>
+   int putenv(char *str);
+   
+   int setenv(const char *name, const char *value, int rewrite);
+   int unsetenv(const char *name);
+   由于环境表和环境字符串通常存放在进程存储空间的顶部。它既不能向高地址扩展，也不能向低地址扩展。
+   在修改或新增时比较麻烦。在空间不够时，需要用malloc在堆申请内存空间，然后把整个环境表copy到堆。但原来的name=value还是在存储空间的顶部。这样就会是两个存储空间的混合使用。
+   可见增加环境变量的效率不会高。
 ** setjmp和longjmp函数
+   非局部指的是，这不是由普通C语言goto语句在一个函数内实施的跳转，而是在栈上跳过若干调用帧，返回到当前函数调用路径上的某一个函数中。
+   #include <setjmp.h>
+   int setjmp(jmp_buf env);
+   
+   void longjump(jmp_buf env, int val);
+
+   规范的使用方式是将env变量定义为全局变量。
+   
+   对于一个setjmp,可以有多个longjump。val用来区分从哪调用的longjump。
+   
+   调用longjmp造成main中的setjmp的返回，但是这一次的返回值是longjmp的第二个参数。
+*** 自动、寄存器和易失变量
+
+*** 自动变量的潜在问题
 ** getrlimit和setrlimit函数
    
