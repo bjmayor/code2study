@@ -1258,15 +1258,39 @@
    #include <setjmp.h>
    int setjmp(jmp_buf env);
    
-   void longjump(jmp_buf env, int val);
+   void longjmp(jmp_buf env, int val);
 
    规范的使用方式是将env变量定义为全局变量。
    
-   对于一个setjmp,可以有多个longjump。val用来区分从哪调用的longjump。
+   对于一个setjmp,可以有多个longjmp。val用来区分从哪调用的longjmp。
    
    调用longjmp造成main中的setjmp的返回，但是这一次的返回值是longjmp的第二个参数。
 *** 自动、寄存器和易失变量
+    当longjmp返回到setjmp时(上例是main), 自动变量和寄存器变量的值是否会恢复到以前调用setjmp时的值，或者保持为调用longjmp时的值？
+    答案是“看情况”。大多数实现并不回滚这些自动变量和寄存器变量的值，而所有标准则说它们的值是不确定的。
 
+    如果你有一个自动变量，而又不想使其值回滚，则可定义为具有volatile属性。
+    声明为全局或静态变量的值在执行longjmp时保持不变。
+    **C语言volatile**
+    用于告诉编译器这个变量是容易变化的，不需要优化(如使用寄存器优化)，每次用的时候，直接从原内存中读取。避免寄存器、CPU高级缓存等导致的数据不一致性。
+    
+    如果要编写一个使用非局部跳转的可移植程序，则必须使用volatile属性。但是从一个系统移植到另一个系统，任何事情都可能改变。
 *** 自动变量的潜在问题
+    声明自动变量的函数返回后，不能再使用这些自动变量。
 ** getrlimit和setrlimit函数
+   每个进程都有一组资源限制，其中一些可以用getrlimit和setrlimit函数查询和更改。
+   #include <sys/resource.h>
+   int getrlimit(int resource, struct rlimit *rlptr);
+   int setrlimit(int resource, const struct rlimit *rlptr);
+   
+   进程的资源限制通常是在系统初始化时由进程0建立的，然后由每个后续进程继承。
+   struct rlimit{
+       rlim_t rlim_cur;/* soft limit ,current limit */
+       rlim_t rlim_max;/* hard limit: maximum value for rlim_cur */
+   }
+   
+   在更改资源限制时，须遵循下列三条规则：
+   1. 任何一个进程都可将一个软限制值更改为小于或等于其硬限制值。
+   2. 任何一个进程都可降低其硬限制值，但它必须>=其软限制值。这种降低对普通用户而言是不可逆的。
+   3. 只有超级用户进程可以提高硬限制值。
    
