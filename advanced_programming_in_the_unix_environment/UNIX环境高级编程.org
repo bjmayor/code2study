@@ -1601,7 +1601,53 @@
 
 
 ** 更改用户ID和组ID
+   一般而言，在设计应用程序时，我们总是试图使用最小特权模型。
+   #include <unistd.h>
+   int setuid(uid_t uid);
+   int setgid(gid_t gid);
+
+   改变用户ID的规则：
+   1. 若进程具有超级用户权限，则setuid函数将实际用户ID、有效用户ID、保存用户ID设置为uid。
+   2. 若进程没有超级用户权限，但是uid等于实际用户ID或保存的设置用户ID,则setuid只将有效用户ID设置为uid, 不改变实际用户ID和保存的设置用户ID.
+   3. 如果上面两个条件都不满足，则将errno设置为EPERM,并返回-1.
+
+      
+   关于内核所维护的三个用户ID,还要注意以下几点：
+   1. 只有超级用户进程可以更改实际用户ID。通常，实际用户ID是在用户登录时，由login(1)程序设置的，而且永远不会改变它。
+   2. 仅当对程序文件设置了设置用户ID位时，exec函数才会设置有效用户ID。任何时候都可以调用setuid,将有效用户ID设置为实际用户ID或保存的设置用户ID。
+   3. 保存的设置用户ID是由exec复制有效用户ID而得来的。如果设置了文件的设置用户ID位，则在 exec根据文件的用户ID设置了进程的有效用户ID以后，就将这个副本保存下来。
+
+      
+   改变三个用户ID的不同方法
+   | ID               | exec(设置用户ID位关闭) | exec(设置用户ID位打开) | setuid(uid)超级用户 | setuid(uid)非特权用户 |
+   |------------------+------------------------+------------------------+---------------------+-----------------------|
+   | 实际用户ID       | 不变                   | 不变                   | uid                 | 不变                  |
+   | 有效用户ID       | 不变                   | 设置为程序文件的用户ID | uid                 | 设置为uid             |
+   | 保存的设置用户ID | 从有效用户ID复制       | 从有效用户ID复制       | uid                 | 不变                  |
+
+   参数man程序来理解。
+*** setreuid和setregid函数
+    r = real, e = effect
+    用来交换实际用户ID和有效用户ID。
+    #include <unistd.h>
+    int setreuid(uid_t ruid, uid_t euid);
+    int setregid(gid_t rgid, gid_t egid);
+*** seteuid和setegid函数
+    类似于setuid和setgid, 但只更改有效用户ID和有效组ID。
+    
+*** 组ID
+    组ID的规则和用户ID一样。
 ** 解释器文件
+   文本文件，其起始行是
+   #！ pathname [optional-argument]
+   平时看到的shell脚本，python脚本，ruby脚本都是这样的。。
+   
+   内核使调用exec函数的进程  实际执行的并不是该解释器文件, 而是该解释器文件第一行中pathname所指定的文件。
+
+   基于以下理由，解释器文件是有用的:
+   1. 有些程序是用某种脚本语言编写的脚本，解释器文件可将这一事实隐藏起来。
+   2. 解释器脚本在效率方面也提供了好处。
+   3. 解释器脚本使我们可以使用除/bin/sh以外的其他shell来编写shell脚本。
 ** system函数
 ** 进程会计
 ** 用户标识
