@@ -1649,9 +1649,80 @@
    2. 解释器脚本在效率方面也提供了好处。
    3. 解释器脚本使我们可以使用除/bin/sh以外的其他shell来编写shell脚本。
 ** system函数
-** 进程会计
-** 用户标识
-** 进程时间
+   #include <stdlib.h>
+   int system(const char *cmdstring);
+   
+   如果cmdstring是一个空指针，则仅当命令处理程序可用时，system返回非0值，用此特殊判断操作系统是否支持system函数。
+   因为system在其实现中调用了fork、exec和waitpid,因此有三种返回值:
+   1. 如果fork失败或者waitpid返回除EINTR之外的出错，则system返回-1,而且errno设置了错误类型值。
+   2. 如果exec失败(表示不能执行shell), 则其返回值如同shell执行了exit(127)一样。
+   3. 否则所有3个函数都执行成功，并且system的返回值 是shell的终止状态，其格式已在waitpid中说明。
+      
 
-  stop一下，在这里复习前面8章内容。
+   使用system而不是直接使用fork和exec的优点是:system进行了所需的各种出错处理，以及各种信号处理。
+*** 设置用户ID程序
+    决不应该在一个设置用户ID程序中调用system， 这是一个安全方面的漏洞。
+    
+    如果一个进程正以特殊的权限(设置用户ID或设置组ID)运行，它又想生成另一个进程执行另一个程序，则它应当直接使用fork和exec,而且在fork之后、exec之前要改回到普通权限。
+    设置用户ID或设置组ID程序决不应调用system函数。
+** 进程会计
+   需要注意，所有实现都有差别。
+   acct用于启用和禁止进程会计。唯一使用这个函数的是accton(8)命令。会计记录写到指定的文件中，在Mac os x 中，是/var/account/acct
+   
+    typedef u_short comp_t;
+    struct acct
+    {
+        char ac_flag;/* flag */
+        char ac_stat; /* termination status (signal & core flag only) */
+
+        uid_t ac_uid; /* real user ID */
+        gid_t ac_gid; /* real group ID */
+        dev_t ac_tty; /* controlling terminal */
+        time_t ac_btime; /* starting calendar time */
+        comp_t ac_utime; /* user CPU time (clock ticks) */
+        comp_t ac_stime; /* system CPU time(clock ticks) */
+        comp_t ac_etime; /* elapsed time (clock ticks) */
+        comp_t ac_mem; /* average memory usage */
+        comp_t ac_io; /* bytes transferred (by read and write) */
+        comp_t ac_rw; /* blocks read or written */
+                      /* (not present on BSD systems) */
+        char ac_commm[8];/*command name , 大小看系统, mac 是10*/
+    }
+    
+    其中ac_flag成员记录了进程执行期间的某些事件。见下表。
+    | ac_flag | 说明                               |
+    |---------+------------------------------------|
+    | AFORK   | 进程是由fork产生的，但从未调用exec |
+    | ASU     | 进程使用超级用户特权               |
+    | ACOMPAT | 进程使用兼容模式                   |
+    | ACORE   | 进程转储core                       |
+    | AXSIG   | 进程由信号杀死                     |
+    | AEXPND  | 扩展的会计条目                            |
+    
+    会计记录所需的各种数据都由内核保存在进程表中，并在新进程被创建时(fork)置初值。
+    
+    一个进程休眠的时间总量并不精确。
+** 用户标识
+   任何进程都可以得到实际和有效用户ID和组ID。
+   然后通过getpwuid(getuid()), 获取登录名。
+   如果一个用户有多个登录名，则可以通过getlogin函数取得此用户登录时使用的名字。
+   #include <unistd.h>
+   char *getlogin(void);
+
+   如果调用此函数的进程没有连接到用户登录所用的终端，则本函数会失效。通常称此类进程为守护进程。
+   在获知登录名后，就可以用getpwnam在口令文件中查找用户的相关记录。
+  
+** 进程时间
+   我们可以测量三种时间：墙上时钟时间、用户CPU时间、系统CPU时间。
+   #include <sys/times.h>
+   clock_t times(struct tms *buf);
+
+   struct tms {
+       clock_t tms_utime;
+       clock_t tms_stime;
+       clock_t tms_cutime;/* user cpu time, terminated children;*/
+       clock_t tms_cstime;/* system cpu time, terminated children;*/
+   }
+   
+   times函数返回墙上时钟时间作为其函数值。
 * 进程关系
