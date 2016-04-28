@@ -5,6 +5,8 @@ int glob = 6;
 int main(void)
 {
     int var;
+    int i;
+    char buf[1024];
     pid_t pid;
 
     var = 88;
@@ -19,9 +21,12 @@ int main(void)
     {
         glob++;
         var++;
-        _exit(0);
+        fclose(stdout);
+        exit(0);
     }
 
-    printf("pid = %d, glob=%d, var=%d\n", getpid(), glob, var);
+    i = printf("pid = %d, glob=%d, var=%d\n", getpid(), glob, var);
+    sprintf(buf, "%d\n", i);
+    write(STDOUT_FILENO, buf, strlen(buf));
     exit(0);
 }
