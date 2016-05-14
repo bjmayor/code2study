@@ -2155,8 +2155,29 @@
    使用alarm和pause，进程可使自己休眠一段指定的时间。alarm还常用于对可能阻塞的操作设置时间上限值。
 
 ** 信号集
+   POSIX.1定义了数据类型sigset_t以包含一个信号集，并且定义了下列五个处理信号集的函数。
+   #include <signal.h>
+   int sigemptyset(sigset_t *set);//空集合
+   int sigfillset(sigset_t *set);//全集合
+   int sigaddset(sigset_t *set, int signo);
+   int sigdelset(sigset_t *set, int signo);
+   int sigismember(sigset_t *set, int signo);//判断是否在集合中。
+
+   所有应用程序在使用信号集前，要对该信号集调用sigemptyset或sigfillset一次。这是因为C编译器将把未赋初值的外部和静态变量都初始化为0，而这是否与给定系统上信号集的实现
+   相对应却不清楚。
 ** sigprocmask函数
+   sigprocmask可以检测或更改信号屏蔽字，或者在一个步骤中同时执行这两个操作。这是仅为单线程的进程定义的。
+   #include <signal.h>
+   int sigprocmask(int how, const sigset_t *restrict set, sigset_t *restrict oset);
+
+   通过how来控制是增加，减少 还是设置信号屏蔽号。如果oset不为null, 则当前的信号屏蔽字通过oset返回。
+   在调用sigprocmask后如果有任何未决的、不再阻塞的信号，则在sigprocmask返回前，至少会将其中一个信号递送给该进程。
+
 ** sigpending函数
+   sigpending返回信号集，其中的各个信号对于调用进程是阻塞的而不能递送，因而也一定是当前未决的。该信号集通过set参数返回。
+   #include <signal.h>
+   int sigpending(sigset_t *set);
+
 ** sigaction函数
 ** sigsetjmp和siglongjmp函数
 ** sigsuspend函数
