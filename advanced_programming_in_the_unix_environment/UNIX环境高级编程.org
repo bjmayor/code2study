@@ -2179,6 +2179,49 @@
    int sigpending(sigset_t *set);
 
 ** sigaction函数
+   sigaction修改和检查与指定信号相关联的处理动作，取代UNIX早期版本使用的signal函数。
+   #include <signal.h>
+   int sigaction(int signo, const struct sigaction *restrict act, struct sigaction *restrict oact);
+   act用于修改，oact用于返回。
+   
+   struct sigaction {
+       void (*sa_handler)(int);
+       sigset_t sa_mask;
+       int sa_flags;
+       void (*sa_sigaction)(int, siginfo_t *, void *);
+   }
+   
+   在信号处理程序被调用时，操作系统建立的新信号屏蔽字包括正被传送的信号。
+   一旦对给定的信号设置了一个动作，那么在调用sigaction显式地改变它之前，该设置就一直有效。
+   
+   处理每个信号的选项标志
+   | 选项         | 说明                                                                                                   |
+   |--------------+--------------------------------------------------------------------------------------------------------|
+   | SA_INTERRUPT | 中断的系统调用不重启                                                                                   |
+   | SA_NOCLDSTOP | 子进程是因为作用控制而停止，不产生SIGCHLD信号                                                          |
+   | SA_NOCLDWAIT | 若signo是SIGCHLD，则当调用进程的子进程终止时，不创建僵死进程                                           |
+   | SA_NODEFER   | 当捕捉到此信号时，在执行其信号捕捉函数时，系统不自动阻塞此信号。**对应早期不可靠信号**                 |
+   | SA_ONSTACK   | 若用sigaltstack(2)声明了一替换栈，则将此信号递送给替换栈上的进程。                                     |
+   | SA_RESETHAND | 在此信号捕捉函数的入口处，将此信号的处理方式复位为SIG_DFL,并清除SA_SIGINFO标志。**对应早期不可靠信号** |
+   | SA_RESTART   | 由此信号中断的系统调用会自动重启动。                                                                   |
+   | SA_SIGINFO   | 此选项对信号处理程序提供了附加信息：一个指向siginfo结构的指针和一个指向进程上下文标识符的指针          |
+   
+   sa_sigaction字段是一个替代的信号处理程序，当在sigaction结构中使用了SA_SIGINFO标志时，使用该信号处理程序。
+   sa_handler和sa_sigaction只能二选一。
+
+   struct siginfo {
+       int si_signo;
+       int si_errno;
+       int si_code;/* addtion info (depends on signal)*/
+       pid_t si_pid;
+       uid_t si_uid;
+       void *si_addr;
+       int si_status;
+       long si_band;
+       /* possibly other fields also */
+   }
+   
+   如若信号处理程序是用sigaction设置的，那么其默认方式是不重新启动系统调用。
 ** sigsetjmp和siglongjmp函数
 ** sigsuspend函数
 ** abor函数
