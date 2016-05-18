@@ -2223,6 +2223,17 @@
    
    如若信号处理程序是用sigaction设置的，那么其默认方式是不重新启动系统调用。
 ** sigsetjmp和siglongjmp函数
+   setjmp和longjmp在信号处理函数中使用存在一个问题。
+   当捕捉到一个信号时，进入信号捕捉函数，此时当前信号被自动地加到进程的信号屏蔽字中。这阻止了后来产生的这种信号中断该信号处理程序。
+   如果用longjmp跳出信号处理程序，那么，对此进程的信号屏蔽字会产生什么呢？
+   
+   为了解决此问题，引入sigsetjmp和siglongjmp。在信号处理程序中进行非局部转移时应当使用这两个函数。
+
+   #include <setjmp.h>
+   int sigsetjmp(sigjmp_buf env, int savemask);
+   void siglongjmp(sigjmp_buf env, int val);
+   
+   当savemask非0时，env会保存当前的信号屏蔽字。然后当调用siglongjmp返回时，会从其中恢复保存的信号屏蔽字。
 ** sigsuspend函数
 ** abor函数
 ** system函数
