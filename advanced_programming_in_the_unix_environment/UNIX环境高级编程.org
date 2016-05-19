@@ -2234,8 +2234,23 @@
    void siglongjmp(sigjmp_buf env, int val);
    
    当savemask非0时，env会保存当前的信号屏蔽字。然后当调用siglongjmp返回时，会从其中恢复保存的信号屏蔽字。
+   
+   关于数据类型sig_atomic_t,它是由ANSI C定义的在写时不会被中断的变量类型。
+   它意味着这种变量在具有虚存的系统上不会跨越页的边界，可以用一条机器指令对其进行存取。
+   对于这种类型的变量总是包括ANSI类型修饰符volatile,其原因是：该变量将由两个不同的控制线--main函数和异步执行的信号处理程序存取。
 ** sigsuspend函数
-** abor函数
+   如果希望对一个信号解除阻塞，然后pause以等待以前被阻塞的信号发生。在阻塞和pause之间由于有时间窗口，是有可能
+导致pause以后一直暂停，得不到信号唤醒的。
+   为了解决这个问题，需要在一个原子操作中实现恢复信号屏蔽字，然后使进程睡眠，这种功能是由sigsuspend函数所提供的。
+   #include <signal.h>
+   int sigsuspend(const sigset_t *sigmask);
+
+   在捕捉到一个信号或发生了一个会终止该进程的信号之前，该进程也被挂起。如果捕捉到一个信号而且从该信号处理程序返回，则sigsuspend返回，
+并且该进程的信号屏蔽字设置为调用sigsuspend之前的值。
+
+   sigsuspend的另一种应用是等待一个信号处理程序设置一个全局变量。
+   可以用信号实现父子进程之间的同步。前文所说的TELL_WAIT、TELL_PARENT、TELL_CHILD、WAIT_PARENT、WAIT_CHILD。
+** abort函数
 ** system函数
 ** sleep函数
 ** 作业控制信号
