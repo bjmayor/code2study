@@ -1150,6 +1150,9 @@
     2. main执行了一个无返回值的return语句。
     3. main没有声明返回类型为整形。
     
+       
+
+    
 *** atexit函数
     上文提到exit会执行一些清理操作，这些清理操作是由atexit登录的，按ISO C的规定，一个进程可以登记多达32个函数。
     这些程序称为终止处理程序。
@@ -2326,7 +2329,28 @@
    #include <pthread.h>
    pthread_t pthread_self(void);
 ** 线程创建
+   在创建多个控制线程以前，程序的行为与传统的进程并没有什么区别。新增的线程可以通过调用
+   pthread_create函数创建。
+   #include <pthread.h>
+   int pthread_create(pthread_t *restrict attr, void *(*start_rtn)(void*), void *restrict arg);
+   新创建的线程从start_rtn函数的地址开始运行，该函数只有一个无类型指针参数arg。
+   线程创建时并不能保证哪个线程会先运行：是新创建的线程，还是调用线程。新创建的线程可以访问
+   进程的地址空间，并且继承调用线程的浮点环境和信号屏蔽字，但是该线程的挂起信号集会被清除。
 ** 线程终止
+   如果在进程中的任意线程调用了exit、_Exit或_exit,那么整个进程就会终止。与此相类似，如果默认的动作是终止进程，
+   那么，发送到线程的信号就会终止整个进程。
+   单个线程可以通过3种方式退出，因此可以在不终止整个进程的情况下，停止它的控制流。
+   1. 线程可以简单地从启动例程中返回，返回值是线程的退出码。(有点类似main函数的return,进程的返回状态)
+   2. 线程可以被同一进程中的其他线程取消。
+   3. 线程调用pthread_exit。
+   #include <pthread.h>
+   void pthread_exit(void *rval_ptr);
+   进程中的其它线程可以通过调用pthread_join函数访问到这个指针。
+   #include <pthread.h>
+   int pthread_join(pthread_t thread, void **rval_ptr)
+   调用线程一直阻塞，直到指定的线程调用pthread_exit、从启动例程中返回或者被取消。
+   如果线程简单地从它的启动例程返回，rval_ptr就包含返回码。如果线程被取消,由rval_ptr指向的内存单元就设置为
+   PTHREAD_CANCELED。
 ** 线程同步
 * 第十二章 线程控制
    **需要复习**

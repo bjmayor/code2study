@@ -21,6 +21,8 @@ void err_sys(const char *fmt, ...)
     exit(1);
 }
 
+
+
 void err_dump(const char *fmt, ...)
 {
     va_list ap;
