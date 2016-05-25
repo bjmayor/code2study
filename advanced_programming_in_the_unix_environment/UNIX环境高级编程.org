@@ -2349,8 +2349,10 @@
    #include <pthread.h>
    int pthread_join(pthread_t thread, void **rval_ptr)
    调用线程一直阻塞，直到指定的线程调用pthread_exit、从启动例程中返回或者被取消。
-   如果线程简单地从它的启动例程返回，rval_ptr就包含返回码。如果线程被取消,由rval_ptr指向的内存单元就设置为
-   PTHREAD_CANCELED。
+   如果线程简单地从它的启动例程返回，rval_ptr就包含返回码。如果线程被取消,由rval_ptr指向的内存单元就设置为 PTHREAD_CANCELED。
+   
+   pthread_create和pthread_exit函数的无类型指针参数能传递的数值可以不止一个，该指针可以传递包含更复杂信息的结构的地址，
+   但是注意这个结构所使用的内存在调用者完成调用以后必须仍然是有效的，否则就会出现无效或非法内存访问。
 ** 线程同步
 * 第十二章 线程控制
    **需要复习**
