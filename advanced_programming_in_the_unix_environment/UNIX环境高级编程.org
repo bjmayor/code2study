@@ -2353,7 +2353,68 @@
    
    pthread_create和pthread_exit函数的无类型指针参数能传递的数值可以不止一个，该指针可以传递包含更复杂信息的结构的地址，
    但是注意这个结构所使用的内存在调用者完成调用以后必须仍然是有效的，否则就会出现无效或非法内存访问。
+   
+   线程可以通过调用pthread_cancel函数来请求取消同一进程中的其他线程。
+   #include <pthread.h>
+   int pthread_cancel(pthread_t tid);
+   在默认情况下，pthread_cancel函数会使得由tid标识的线程的行为表现为如同调用了参数
+为PTHREAD_CANCELED的pthread_exit函数，但是，线程可以选择忽略取消或者控制如何被取消。
+注意pthread_cancel并不等待线程终止，它仅仅提出请求。
+
+   线程可以安排它退出时需要调用的函数，这样的函数称为线程清理处理程序。
+   一个线程可以建立多个清理处理程序。处理程序记录在栈中，也就是说，它们的执行顺序
+与它们的注册时相反。
+   #include <pthread.h>
+   void pthread_cleanup_push(void (*trn)(void *), void *arg);
+   void pthread_cleanup_pop(int execute);
+   
+   当线程执行以下动作时，清理函数rtn是由pthread_cleanup_push函数调度的，调用时
+只有一个参数arg:
+   * 调用pthread_exit时;
+   * 响应取消请求时;
+   * 用非零execute参数调用pthread_cleanup_pop时。
+     如果execute参数设置为0，清理函数将不被调用。不管发生上述哪种情况，pthread_cleanup_pop
+都将删除上次pthread_cleanup_push调用建立的清理处理程序。
+
+   线程函数和进程函数对比
+   | 进程原语 | 线程原语            | 描述                         |
+   |----------+---------------------+------------------------------|
+   | fork     | pthread_create      | 创建新的控制流               |
+   | exit     | pthread_exit        | 从现有的控制流中退出         |
+   | waitpid  | pthread_join        | 从控制流中得到退出状态       |
+   | atexit   | pthread_cancel_push | 注册在退出控制流时调用的函数 |
+   | getpid   | pthread_self        | 获取控制流的ID               |
+   | abort    | pthread_cancel      | 请求控制流的非正常退出       |
+   
+   在默认情况下，线程的终止状态会保存直到对该线程调用pthread_join。如果线程已经
+   被分离，线程的底层存储资源可以在线程终止时立即被收回。在线程被分离后，我们不能
+用pthread_join函数等待它的终止状态，因为对分离状态调用pthread_join会产生未定义行为。
+可以调用phread_detach分离线程。
+#include <pthread.h>
+int pthread_detach(pthread_t tid);
+**为什么需要分离线程**
+因为线程不分离的话，需要等待创建线程调用pthread_join之后，才会释放存储资源。
+而分离的线程在线程终止时，底层存储资源立即被回收。
 ** 线程同步
+   当一个线程修改变量时，其他线程在读取这个变量时可能会看到一个不一致的值。在变量修改
+时间多于一个存储器访问周期的处理器结构中，当存储器读与存储器写这两个周期交叉时，这种不一致就会出现。
+
+    考虑变量增量操作的情况，增量操作通常分解为以下3步。
+    1. 从内存单元读入寄存器。
+    2. 在寄存器中对变量做增量操作。
+    3. 把新的值写回内存单元。
+
+    如果数据总是以顺序一致出现的，就不需要额外的同步。当多个线程观察不到数据的不一致
+时，那么操作就是顺序一致的。在现代计算机系统中，存储访问需要多个总线周期，多处理器
+的总线周期通常在多个处理器上是交叉的，所以我们并不能保证数据是顺序一致的。
+*** 互斥量
+*** 避免死锁
+*** 函数pthread_mutext_timelock
+*** 读写锁
+*** 带有超时的读写锁
+*** 条件变量
+*** 自旋锁
+*** 屏障
 * 第十二章 线程控制
    **需要复习**
    需要复习
