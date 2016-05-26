@@ -2407,7 +2407,28 @@ int pthread_detach(pthread_t tid);
     如果数据总是以顺序一致出现的，就不需要额外的同步。当多个线程观察不到数据的不一致
 时，那么操作就是顺序一致的。在现代计算机系统中，存储访问需要多个总线周期，多处理器
 的总线周期通常在多个处理器上是交叉的，所以我们并不能保证数据是顺序一致的。
+
+除了计算机体系结构的因素以外，程序使用变量的方式也会引起竞争，也会导致不一致的情况发生。
 *** 互斥量
+    互斥量从本质上来说是一把锁，在访问共享资源前对互斥量进行加锁，在访问完成后释放互斥量上的锁。
+    ps: 感觉互斥量就是一个锁的标识。关键点在锁上。同时依赖程序的使用方式，必须对共享资源都使用同一把锁。锁的什么共享资源也是由程序控制的。锁只是一个机制，关键还是在于使用是否
+得当。
+    
+    在设计时需要规定所有的线程必须遵守相同的数据访问规则，只有这样，互斥机制才能正常工作。操作系统并不会做数据访问的串行化。
+    如果允许其中的某个线程在没有得到锁的情况下也可以访问共享资源，那么即使其他的线程在使用共享资源前都获取了锁，也还是会出现数据不一致的问题。
+    
+    互斥变量用pthread_mutex_t 数据类型表示，在使用之前，必须先初孡经，可以设置为常量PTHREAD_MUTEX_INITIALIZER(只对静态分配的互斥量),
+    也可以通过调用pthread_mutex_init函数进行初始化。如果动态地分配互斥量，那么在释放前需要调用pthread_mutex_destroy。
+    #include <pthread.h>
+    int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr);
+    int pthread_mutex_destroy(pthread_mutex_t *mutex);
+    
+    加锁，释放锁。
+    #include <pthread.h>
+    int pthread_mutex_lock(pthread_mutex_t *mutex);
+    int pthread_mutex_trylock(pthread_mutex_t *mutex);
+    int pthread_mutex_unlock(pthread_mutex_t *mutex);
+    
 *** 避免死锁
 *** 函数pthread_mutext_timelock
 *** 读写锁
