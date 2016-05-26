@@ -2430,7 +2430,25 @@ int pthread_detach(pthread_t tid);
     int pthread_mutex_unlock(pthread_mutex_t *mutex);
     
 *** 避免死锁
+    如果线程试图对同一个互斥量加锁两次，那么它自身就会陷入死锁状态。还有使用多个锁时，两个线程
+    互相等待对方释放锁，也会产生死锁。
+
+    可以通过仔细控制互斥量的顺序来避免死锁的产生。例如，假设需要对两个互斥量A和B同时加锁。
+    如果所有线程总是对互斥量B加锁之前锁住互斥量A,那么使用这两个互斥量就不会产生死锁(当然在其他
+    资源上扔可能出现死锁)。
+    
+    有时候，应用程序的结构使得对互斥量进行排序是很困难的。如果涉及了太多的锁和数据结构，可用的函数
+并不能把它转换成简单的层次，那么就需要采用另外的方法。
+    在这种情况下，可以先释放占有的锁，然后过一段时间再试。这种情况下可以使用pthread_mutex_trylock接口
+    来避免死锁。如果已经占有某些锁而且pthread_mutex_trylock接口返回成功，那么就可以前进。但是，
+    如果不能获取锁，可以先释放已经占有的锁，做好清理工作，然后过一段时间再重新试。
+
 *** 函数pthread_mutext_timelock
+    相对于pthread_mutex_lock一直阻塞直到得到锁，pthread_mutex_timelock可以指定可以等待的时间。
+    如果在指定等待的时间里没有得到锁，也会返回。此时返回错误码ETIMEOUT。
+    #include <pthread.h>
+    #include <time.h>
+    int pthread_mutex_timelock(pthread_mutex_t *restrict mutex, const struct timespec *restrict tsptr);
 *** 读写锁
 *** 带有超时的读写锁
 *** 条件变量
