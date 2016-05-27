@@ -2450,7 +2450,43 @@ int pthread_detach(pthread_t tid);
     #include <time.h>
     int pthread_mutex_timelock(pthread_mutex_t *restrict mutex, const struct timespec *restrict tsptr);
 *** 读写锁
+    读写锁与互斥量类似，不过读写锁允许更高的并行性。
+    互斥量要么是锁住状态，要么就是不加锁状态，而且一次只有一个线程可以对其加锁。
+    读写锁可以有3种状态：读模式下的加锁状态，写模式下加锁状态，不加锁状态。一次只有一个线程可以占有写模式的读写锁，
+    但是多个线程可以同时占有读模式的读写锁。
+    
+    读写锁也叫共享互斥锁。读模式下锁住，也叫以共享模式锁住，写模式下锁住，也叫以互斥模式锁住。
+    以共享模式锁住时，其它线程依然可以获取读模式的读写锁, 如果有一个线程以写模式来获取读写锁，会一直阻塞到所有占用读模式的线程释放锁,
+    同时会阻塞之后读模式读写写的请求，避免等待的写模式锁请求一直得不到满足。
+
+    以互斥模式锁住时，其它线程再获取读写锁(读/写模式)都会阻塞。
+    
+    与互斥量相比，读写锁在使用之前必须初始化，在释放它们底层的内存之前必须销毁。
+    #include <pthread.h>
+    int  pthread_rwlock_init(pthread_rwlock_t *restrict rwlock,const pthread_rwlockattr_t *restrict attr);
+    int  pthread_rwlock_destroy(pthread_rwlock_t *rwlock);
+    如果默认属性就足够的话，可以用PTHREAD_RWLOCK_INITIALIZER常量对静态分配的读写锁进行初始化。
+    
+    如果pthread_rwlock_init为读写锁分配了资源，pthread_rwlock_destroy将释放这些资源。
+    如果在调用pthread_rwlock_destroy之前就释放了读写锁占用的内存空间，那么分配给这个锁的资源就会丢失。
+    
+    锁
+    #include <pthread.h>
+    int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
+    
+    同样有尝试锁，避免阻塞
+    #include <pthread.h>
+    int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock);
+    
 *** 带有超时的读写锁
+    类似于互斥量的带超时的锁，注意超时指的绝对时间，而不是相对时间
+    #include <pthread.h>
+    #include <time.h>
+    int pthread_rwlock_timedrdlock(pthread_rwlock_t *restrict rwlock, const struct timespec *restrict tsptr);
+    int pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rwlock, const struct timespec *restrict tsptr);
 *** 条件变量
 *** 自旋锁
 *** 屏障
