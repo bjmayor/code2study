@@ -2304,10 +2304,10 @@
 ** 引言
    一个进程中的所有线程都可以访问该进程的组成部件，如文件描述符和内存。
    无论何时，只要单个资源需要在多个用户间共享，就必须处理一致性问题。
-   同步机制，用以防止多个线程查看到一不致的共享资源。
+   同步机制，用以防止多个线程查看到不一致的共享资源。
 ** 线程概念
    使用多线程的好处：
-   1. 通过为每种事件类型的处理分配单独的线程，能够简化处理异步事件的代码。每个线程只在进行事件处理进可以采用同步编程模式，同步编程模式要比异步编程模式简单的多。
+   1. 通过为每种事件类型的处理分配单独的线程，能够简化处理异步事件的代码。每个线程只在进行事件处理时可以采用同步编程模式，同步编程模式要比异步编程模式简单的多。
    2. 多个进程必须使用操作系统提供的复杂机制才能实现内存和文件描述符的共享。而多个线程自动地可以访问相同的存储地址空间和文件描述符。
    3. 有些问题可以通过将其分解从而改善整个程序的吞吐量。在只有一个控制线程的情况下，单个进程需要完成多个任务时，实际上需要把这些任务串行化；有了多个控制线程，相互独立的
       任务的处理就可以交叉进行，只需要为每个任务分配一个单独的线程，当然只有在处理过程互不依赖的情况下，两个任务的执行才可以穿插进行。
@@ -2315,7 +2315,7 @@
       
       
    线程包含了表示进程内执行环境必需的信息，其中包括进程中标识线程的线程ID、一组寄存器值、栈、调用优先级和策略、信号屏蔽字、errno变量 以及线程私有数据。
-   进程的所有信息对该进程的所有线程都是共享的，包括可执行的程序文本、程序的全局内存和堆内存、线以及文件描述符。
+   进程的所有信息对该进程的所有线程都是共享的，包括可执行的程序文本、程序的全局内存和堆内存、栈以及文件描述符。
    
    编译时测试宏_POSIX_THREADS判断是否支持线程。
    运行时把_SC_THREADS常数用于调用sysconf函数，动态判断是否支持线程。
@@ -2365,11 +2365,10 @@
    一个线程可以建立多个清理处理程序。处理程序记录在栈中，也就是说，它们的执行顺序
 与它们的注册时相反。
    #include <pthread.h>
-   void pthread_cleanup_push(void (*trn)(void *), void *arg);
+   void pthread_cleanup_push(void (*rtn)(void *), void *arg);
    void pthread_cleanup_pop(int execute);
    
-   当线程执行以下动作时，清理函数rtn是由pthread_cleanup_push函数调度的，调用时
-只有一个参数arg:
+   当线程执行以下动作时，清理函数rtn是由pthread_cleanup_push函数调度的，调用时只有一个参数arg:
    * 调用pthread_exit时;
    * 响应取消请求时;
    * 用非零execute参数调用pthread_cleanup_pop时。
@@ -2382,7 +2381,7 @@
    | fork     | pthread_create      | 创建新的控制流               |
    | exit     | pthread_exit        | 从现有的控制流中退出         |
    | waitpid  | pthread_join        | 从控制流中得到退出状态       |
-   | atexit   | pthread_cancel_push | 注册在退出控制流时调用的函数 |
+   | atexit   | pthread_cleanup_push | 注册在退出控制流时调用的函数 |
    | getpid   | pthread_self        | 获取控制流的ID               |
    | abort    | pthread_cancel      | 请求控制流的非正常退出       |
    
@@ -2417,7 +2416,7 @@ int pthread_detach(pthread_t tid);
     在设计时需要规定所有的线程必须遵守相同的数据访问规则，只有这样，互斥机制才能正常工作。操作系统并不会做数据访问的串行化。
     如果允许其中的某个线程在没有得到锁的情况下也可以访问共享资源，那么即使其他的线程在使用共享资源前都获取了锁，也还是会出现数据不一致的问题。
     
-    互斥变量用pthread_mutex_t 数据类型表示，在使用之前，必须先初孡经，可以设置为常量PTHREAD_MUTEX_INITIALIZER(只对静态分配的互斥量),
+    互斥变量用pthread_mutex_t 数据类型表示，在使用之前，必须先初始化，可以设置为常量PTHREAD_MUTEX_INITIALIZER(只对静态分配的互斥量),
     也可以通过调用pthread_mutex_init函数进行初始化。如果动态地分配互斥量，那么在释放前需要调用pthread_mutex_destroy。
     #include <pthread.h>
     int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr);
@@ -2442,7 +2441,7 @@ int pthread_detach(pthread_t tid);
     在这种情况下，可以先释放占有的锁，然后过一段时间再试。这种情况下可以使用pthread_mutex_trylock接口
     来避免死锁。如果已经占有某些锁而且pthread_mutex_trylock接口返回成功，那么就可以前进。但是，
     如果不能获取锁，可以先释放已经占有的锁，做好清理工作，然后过一段时间再重新试。
-
+    
 *** 函数pthread_mutext_timelock
     相对于pthread_mutex_lock一直阻塞直到得到锁，pthread_mutex_timelock可以指定可以等待的时间。
     如果在指定等待的时间里没有得到锁，也会返回。此时返回错误码ETIMEOUT。
@@ -2510,7 +2509,55 @@ int pthread_detach(pthread_t tid);
 
     貌似信号是唯一的异步事件，其它机制都是通过信号来完成的。
 *** 自旋锁
+    自旋锁与互斥量类似，但它不是通过休眠使进程阻塞，而是在获取锁之前一直处于忙等
+    (自旋)阻塞状态。自旋锁可用于以下情况：锁被持有的时间短，而且线程并不希望在重新
+    调度上花费太多的成本。
+    **抢占式内核和非抢占式内核的区别?**
+    这里抢占的是CPU资源。
+    内核抢占(可抢占式内核):
+    即当进程位于内核空间时，有一个更高优先级的任务出现时，如果当前内核允许抢占，
+    则可以将当前任务挂起，执行优先级更高的进程。
+    非抢占式内核：
+    高优先级的进程不能中止正在内核中运行的低优先级的进程而抢占CPU运行。进程一旦处于极心态(例如用户进程执行系统调用),
+    则除非进程自愿放弃CPU,否则该进程将一直运行下去，直至完成或退出内核。
+    
+    当自旋锁用在非抢占式内核中是非常有用的：除了提供互斥机制以外，它们会阻塞中断，这样中断处理程序就
+    不会让系统陷入死锁状态，因为它需要获取已被加锁的自旋锁(把中断想成另一种抢占)。在这种类型的
+    内核中，中断处理程序不能休眠，因此它们能用的同步原语只能是自旋锁。
+    
+    自旋锁只在某些特定的情况下有用。???哪种特定情况???
+
+    #include <pthread.h>
+    int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
+    int pthread_spin_destroy(pthread_spinlock_t *lock);
+    pshared有两个取值：PTHREAD_PROCESS_SHARED,自旋锁能被可以访问锁底层内存的线程获取，即使那些线程
+    属于不同的进程。
+    PTHREAD_PROCESS_PRIVATE,自旋锁只能被初始化该锁的进程内部的线程所访问。
+
+    #include <pthread.h>
+    int pthread_spin_lock(pthread_spinlock_t *lock);
+    int pthread_spin_trylock(pthread_spinlock_t *lock);
+    int pthread_spin_unlock(pthread_spinlock_t *lock);
+    
+    pthread_spin_trylock不能自旋。不能锁立即返回EBUSY错误。
+    需要注意：不要调用在持有自旋锁情况下可能会进入休眠状态的函数。如果调用了这引起函数，会
+    浪费CPU资源，因为其他线程需要获取自旋锁需要等待的时间就延长了。
 *** 屏障
+    屏障(barrier)是用户协调多个线程并行工作的同步机制。屏障允许每个线程等等，直到所有的合作线程都
+    到达某一点，然后从该点继续执行。
+    屏障允许任意数量的线程等待，直到所有的线程完成处理工作，而线程不需要退出。所有线程达到屏障后可以
+    接着工作。
+    #include <pthread.h>
+    int pthread_barrier_init(pthread_barrier_t *restrict barrier,const pthread_barrierattr_t *restirct attr, unsigned int count);
+    int pthread_barrier_destroy(pthread_barrier_t *barrier);
+
+    ccount指定屏障计数。
+    #include <pthread.h>
+    int pthread_barrier_wait(pthread_barrier_t *barrier);
+    调用pthread_barrier_wait的线程在屏障计数未满足条件时，进入休眠状态。如果满足屏障计数，
+    所有的线程都被唤醒。
+    其中一个线程会返回PTHREAD_BARRIER_SERIAL_THREAD，剩下的线程看到的返回值是0,这可以控制其中一个线程
+    作为主线程，它可以工作在其他线程已经完成的工作结果上。
 * 第十二章 线程控制
    **需要复习**
    需要复习
