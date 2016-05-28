@@ -2488,6 +2488,27 @@ int pthread_detach(pthread_t tid);
     int pthread_rwlock_timedrdlock(pthread_rwlock_t *restrict rwlock, const struct timespec *restrict tsptr);
     int pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rwlock, const struct timespec *restrict tsptr);
 *** 条件变量
+    条件变量给多个线程提供了一个会合的场所。条件变量与互斥量一起使用时，允许线程以无竞争的方式等待特定的条件发生。
+    和互斥量和读写锁类似，使用前需要初始化。
+    如果是静态分配的，可以用PTHREAD_COND_INITIALIZER初始化。
+    如果是动态分配的，可以用pthread_cond_init函数进行初始化。同时需要在释放底层的内存空间之前，使用pthread_cond_destroy()去除初始化。
+    #include <pthread.h>
+    int pthread_cond_init(pthread_cond_t *restrict cond, pthread_condattr_t *restrict attr);
+    int pthread_cond_destroy(pthread_cond_t *cond);
+    
+    使用pthread_cond_wait等待条件变为真。
+    #include <pthread.h>
+    int pthread_cond_wait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex);
+    int pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, const struct timespec *restrict timeout);
+    
+    传递给pthread_cond_wait的互斥量对条件进行保护，调用者把锁住的互斥量传给函数。
+    函数把调用线程放到等待条件的线程列表上，然后对互斥量解锁，这两个操作是原子操作。pthread_cond_wait返回时，互斥量再次被锁住。
+    从pthread_cond_wait或者pthread_cond_timedwait调用成功返回时，线程需要重新计算条件，因为其他线程可能已经在运行并改变了条件。
+
+    有两个函数用于通知线程条件已经满足。pthread_cond_signal唤醒单个线程。pthread_cond_broadcast唤醒所有线程。允许pthread_cond_signal在实现的时候
+    可以唤醒不止一个线程。这两个函数，也称为向线程或条件发送信号。。
+
+    貌似信号是唯一的异步事件，其它机制都是通过信号来完成的。
 *** 自旋锁
 *** 屏障
 * 第十二章 线程控制
