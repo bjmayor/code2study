@@ -2582,6 +2582,19 @@ int pthread_detach(pthread_t tid);
    | guardsize   | 线程栈末尾的警戒缓冲区大小(字节数) |
    | stackaddr   | 线程栈的最低地址                   |
    | stacksize   | 线程栈的最小长度(字节数)                     |
+   
+   线程还有其他的一些属性，这些属性并没有在pthread_attr_t结构中表达：
+   * 可取消状态
+   * 可取消类型
+   * 并发度
+     
+     
+   并发度控制着用户级线程可以映射的内核线程或进程的数目。如果操作系统的实现在内核级线程和用户级的线程之间保持一对一的映射，那么改变并发度并不会有效果。
+   如果是多对一的话，增加并发度，可能会改善性能。
+   #include <pthread.h>
+   int pthread_getconcurrency(void);
+   int pthread_setconcurrency(int level);
+   level=0是系统决定。pthread_setconcurrency也只是向系统建议，系统并不保证请求的并发度一定会被采用。
 ** 同步属性
 *** 互斥量属性
     pthread_mutexattr_t结构。
@@ -2592,8 +2605,33 @@ int pthread_detach(pthread_t tid);
     pthread_mutexattr_getrobust和pthread_mutextattr_setrobust获取和设置健壮属性。
     robust = 健壮
     
+    pthread_mutexattr_t结构。
+    #include <pthread.h>
+    int pthread_mutexattr_init(pthread_mutexattr_t *attr);
+    int pthread_mutexattr_destroy(pthread_mutexattr_t *attr);
+    共享属性：
+    #include <pthread.h>
+    int pthread_mutexattr_getpshared(const pthread_mutexattr_t *restrict attr, int *restrict pshared);
+    int pthread_mutexattr_setpshared(const pthread_mutexattr_t *restrict attr, int pshared);
+    
+    默认属性为PTHREAD_PROCESS_PRIVATE
+    取值为PTHREAD_PROCESS_SHARED时，从多个进程共享的内存区域中分配的互斥量就可以用于这些进程的同步。
+
+    类型互斥量属性。有3类，见下面的描述
+    | 互斥量类型               | 没有解锁时再次加锁? | 不占用时解锁? | 在已解锁时解锁? |
+    | PTHREAD_MUTEX_NORMAL     | 死锁                | 未定义        | 未定义          |
+    | PTHREAD_MUTEX_ERRORCHECK | 返回错误            | 返回错误      | 返回错误        |
+    | PTHREAD_MUTEX_RECURSIVE  | 允许                | 返回错误      | 返回错误        |
+    | PTHREAD_MUTEX_DEFAULT    | 未定义              | 未定义        | 未定义          |
+    #include <pthread.h>
+    int pthread_mutexattr_gettype(const pthread_mutexattr_t  *restrict attr, int *restrict type);
+    int pthread_mutexattr_settype(const pthread_mutexattr_t  *attr, int type);
+    
+    注意:递归类型互斥量锁不能用于条件变量中,因为pthread_cond_wait解锁要求立即释放掉锁，以便其它线程拿到锁后修改条件，再通知。
 *** 读写锁属性
+    POSIX只定义了进程共享属性.
 *** 条件变量属性
+    同样是支持进程共享属性
 *** 屏障属性
 ** 重入
 ** 线程特定数据
