@@ -5,6 +5,7 @@ import nmap
 def nmapScan(tgtHost, tgtPort):
     nmScan = nmap.PortScanner()
     results = nmScan.scan(tgtHost, tgtPort)
+    print results
     state = results['scan'][tgtHost]['tcp'][int(tgtPort)]['state']
     print "[*]" + tgtHost +" tcp/" + tgtPort + " " + state
 
@@ -18,7 +19,7 @@ def main():
 
     args.append(tgtPort)
     if (tgtHost == None) | (tgtPort==None):
-        print parser.usage()
+        print parser.usage
         exit(0)
     for tgport in args:
         nmapScan(tgtHost, tgport)
