@@ -2651,7 +2651,36 @@ int pthread_detach(pthread_t tid);
    是异步信号安全的。
    
 ** 线程特定数据
+   线程特定数据，也称为线程私有数据，是存储和查询某个特定线程相关数据的一种机制。我们把这种
+   数据称为线程特定数据或线程私有数据的原因是，我们希望每个线程可以访问它自己单独的数据副本，
+   而不需要担心与其他线程的同步访问问题。
 
+   引入线程私有数据的原因：
+   1. 有时候需要维护基于线程的数据。防止某个线程的数据与其他线程的数据相混淆。
+   2. 提供了让基于进程的接口适应多线程环境的机制。一个很明显的实例是errno。
+      
+     
+   一个进程中的所有线程都可以访问这个进程的整个地址空间。除了使用寄存器以外，一个线程没有办法
+   阻止另一个线程访问它的数据。线程特定数据也不例外。
+   在分配线程特定数据之前，需要创建与该数据相关联的键。(可以和IOS的associate关联一下)
+   #include <pthread.h>
+   int pthread_key_create(pthread_key_t *keyp, void (*destructor)(void*));
+   这个键可以被进程中的所有线程使用，但每个线程把这个键与不同的线程特定数据地址进行关联。
+   创建新键时，每个线程的数据地址设为空值。
+   #include <pthread.h>
+   int pthread_key_delete(pthread_key_t key);
+
+   解决竞争有个办法是使用pthread_once(可以和IOS中的dispatch_once关联一下)
+   #include <pthread.h>
+   pthread_once_t initflag = PTHREAD_ONCE_INIT;
+   int pthread_once(pthread_once_t *initflag, void (*initfn)(void));
+   initflag必须是一个非本地变量(如全局变量或静态变量)，而且必须初始化为PTHREAD_ONCE_INIT。
+
+   键一旦创建以后，就可以通过调用pthread_setspecific函数把键和线程特定数据关联起来。可以
+   通过pthread_getspecific函数获得线程特定数据的地址。
+   #include <pthread.h>
+   void *pthread_getspecific(pthread_key_t key);
+   int pthread_setspecific(pthread_key_t key, const void *value);
 ** 取消选项
 ** 线程和信号
 ** 线程和fork
