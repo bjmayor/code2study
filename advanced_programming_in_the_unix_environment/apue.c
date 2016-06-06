@@ -21,6 +21,15 @@ void err_sys(const char *fmt, ...)
     exit(1);
 }
 
+void err_exit(int errno,const char *fmt, ...)
+{
+    va_list ap;
+    va_start(fmt, ap);
+    err_doit(1, errno, fmt,ap);
+    va_end(ap);
+    exit(1);
+}
+
 
 
 void err_dump(const char *fmt, ...)
