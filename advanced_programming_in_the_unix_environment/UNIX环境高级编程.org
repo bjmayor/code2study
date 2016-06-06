@@ -2682,7 +2682,52 @@ int pthread_detach(pthread_t tid);
    void *pthread_getspecific(pthread_key_t key);
    int pthread_setspecific(pthread_key_t key, const void *value);
 ** 取消选项
+   有两个线程属性并没有包含在pthread_attr_t结构中，它们是可取消状态和可取消类型。
+   这两个属性影响着线程在响应pthread_cancel函数调用时所呈现的行为。
+   可取消状态属性候选值有PTHREAD_CANCEL_ENABLE和PTHREAD_CANCEL_DISABLE。
+   线程通过调用pthread_setcancelstate修改它的可取消状态。
+   #include <pthread.h>
+   int pthread_setcancelstate(int state, int *oldstate);
+   
+   线程在取消请求发出以后还是继续运行，直到线程达到某个取消点。取消点是线程检查它是否被取消
+   的一个位置，如果取消了，则按照请求行事。POSIX.1定义了42个函数，取消点会出现。
+   可以调用pthread_testcancel函数在程序中添加自己的取消点。
+   #include <pthread.h>
+   void pthread_testcancel(void);
+
+   取消类型有两个PTHREADCANCEL_DEFERRED和PTHREAD_CANCEL_ASYNCHRONOUS。
+   通过pthread_setcanceltype来修改类型。
+   #include <pthread.h>
+   int pthread_setcanceltype(int type, int *oldtype);
+   使用异步取消时，线程可以在任意时刻撤消，不是非得遇到取消点才能被取消。
 ** 线程和信号
+   每个线程都有自己的信号屏蔽字，但是信号的处理是进程中所有线程共享的。
+   进程中的信号是递送到单个线程的。如果一个信号与硬件故障相关，那么该信号一般会被发送到
+   引导该事件的线程中去，而其他的信号则被发送到任意一个线程。
+   
+   sigprocmask的行为在多线程的进程并没有定义，线程必须使用pthread_sigmask。
+   #include <signal.h>
+   int pthread_sigmask(int how, const sigset_t *restrict set, sigset_t *restrict oset);
+   
+   线程可以通过调用sigwait等待一个或多个信号的出现。
+   #include <signal.h>
+   int sigwait(const sigset_t *restrict set, int *restrict signop);
+   为了避免错误行为发生，线程在调用sigwait之前，必须阻塞那些它正在等待的信号。
+   sigwait函数会原子地取消信号集的阻塞状态，直到有新的信号被递送。
+   使用sigwait的好处在于它可以简化信号处理，允许把异步产生的信号用同步的方式处理。
+   
+   如果多个线程在sigwait的调用中因等待同一个信号而阻塞，那么在信号递送的时候，就只有一个线程
+   可以从sigwait中返回。
+   在同时有sigwait和sigaction时(处理的同一个信号),操作系统可以让sigwait返回，也可以激活信号
+   处理程序，但这两种情况不会同时发生。
+   
+   kill把信号发送给进程。要把信号发送给线程，可以调用pthread_kill
+   #include <signal.h>
+   int pthread_kill(pthread_t thread, int signo);
+   通过传一个0值的signo来检查线程是否存在。
+   
+   注意：闹钟定时器是进程资源，并且所有的线程共享相同的闹钟。所以，进程中的多个线程
+   不可能互不干扰地使用闹钟定时器。
 ** 线程和fork
 ** 线程和I/O
 * 第十三章 守护进程
