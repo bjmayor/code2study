@@ -2189,7 +2189,7 @@
    
    struct sigaction {
        void (*sa_handler)(int);
-       sigset_t sa_mask;
+       sigset_t sa_mask;/* additional signals to block */
        int sa_flags;
        void (*sa_sigaction)(int, siginfo_t *, void *);
    }
@@ -2784,9 +2784,48 @@ int pthread_detach(pthread_t tid);
    6. 某些守护进程打开/dev/null使其具有文件描述符0、1、2.这样，任何一个试图读标准输入、写标准输出或标准错误的库例程
       都不会产生任何效果。
 ** 出错记录
+   syslog
+   有以下3种产生日志消息的方法。
+   1. 内核例程可以调用log函数. 用户进程可以读写/dev/klog设备
+   2. 大多数用户进程(守护进程)调用syslog函数来产生日志消息。消息被发送至UNIX域数据报套接字/dev/log
+   3. 无论一个用户进程是在此主机上，还是在通过TCP/IP网络连接到此主机的其他主机上，都可将日志消息发送UDP端口514。
+      
+     
+   syslogd守护进程读取所有3种格式的日志消息。此守护进程在启动时读一个配置文件，其文件名一般为/etc/syslog.conf,
+   该文件决定了不同种类的消息应送向何处。
+   #include <syslog.h>
+   void openlog(const char *ident, int option, int facility);
+   void syslog(int priority, const char *format, ...);
+   void closelog(void);
+   int setlogmask(int maskpri);
+   
+   除了syslog,很多平台还提供它的一种变体来处理可变参数列表。
+   #include <syslog.h>
+   #include <stdarg.h>
+   void vsyslog(int priority, const char *format, va_list arg);
+   
+   大多数syslog实现将使消息短时间处于队列中。如果在此段时间中有重复消息到达，那么syslog守护进程不会把它写到日志记录中。
 ** 单实例守护进程
+   文件和记录锁机制为一种方法提供了基础，该方法保证一个守护进程只有一个副本在运行。
+   如果每一个守护进程创建一个有固定名字的文件，并在该文件的整体上加一把写锁，那么只允许创建一把这样的写锁。
+   在此之后创建写锁的尝试都会失败，这向后续守护进程副本指明已有一个副本在运行。
+       文件和记录锁提供了一种方便的互斥机制。如果守护进程在一个文件的整体上得到一把写锁，那么在该守护进程终止时，
+   这把锁将被自动删除。不需要考虑清理工作。
 ** 守护进程的惯例
+   在UNIX系统中，守护进程遵循下列通用惯例。
+   1. 若守护进程使用锁文件，那么该文件通常存储在/var/run目录中。锁文件的名字通常是name.pid
+   2. 若守护进程支持配置选项，那么配置文件通常存放在/etc目录中。配置文件的名字通常是name.conf
+   3. 守护进程可用命令行启动，但通常它们是由系统初始化脚本之一(/etc/rc*或/etc/init.d/*)启动的。
+      如果在守护进程终止时，应当自动重新启动它，则我们可以在/etc/inittab中为该守护进程包括respawn记录项，
+      这样，init就将重新启动该守护进程。
+   4. 若一个守护进程有一个配置文件。一般启动时读取，之后不再读取。如果修改了配置文件，需要重启守护进程。
+      为避免这种麻烦，某些守护进程将捕获SIGHUP信号，当它们接收到该信号时，重新读取配置文件。
 ** 客户进程-服务器进程模型
+   守护进程通常用作服务器进程。
+   在服务器进程中调用fork然后exec另一个程序向客户进程提供服务是很常见的。
+   这些服务器进程通常管理着多个文件描述符：通信端点、配置文件、日志文件和类似的文件。
+   最坏的情况下，让子进程的这些文件描述符保持打开状态会导致安全问题--被执行的程序可能有一些恶意行为。
+   解决此问题的一个简单办法是对所有被执行程序不需要的文件描述符设置执行时关闭(close-on-exec)标志。
 * 第十四章 高级I/O
 * 第十五章 进程间通信
 * 第十六章 网络IPC:套接字
