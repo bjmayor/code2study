@@ -2828,10 +2828,56 @@ int pthread_detach(pthread_t tid);
    解决此问题的一个简单办法是对所有被执行程序不需要的文件描述符设置执行时关闭(close-on-exec)标志。
 * 第十四章 高级I/O
 ** 非阻塞I/O
+   <2016-06-08 Wed>
+   非阻塞I/O使我们可以发出open、read和write这样的I/O操作，并使这些操作不会永远阻塞。
+   如果这种操作不能完成，则调用立即出错返回，表示该操作如继续执行将阻塞。
+   对于一个给定的描述符，有两种为其指定非阻塞I/O的方法。
+   1. 如果调用open获得描述符，则可指定O_NONBLOCK标志。
+   2. 对于已经打开的一个描述符，则可调用fcntl,由该函数打开O_NONBLOCK文件状态标志。·
 ** 记录锁
+   记录锁(record locking)的功能是：当第一个进程正在读或修改文件的某个部分时，使用
+   记录锁可以阻止其他进程修改同一文件区。一个更适合的术语可能是字节范围锁，因为它
+   锁定的只是文件中的一个区域(也可能是整个文件)
+*** 历史
+flock,lockf, fcntl都支持记录锁
+flock只支持针对整个文件加锁。
+*** fcntl记录锁
+    #include <fcntl.h>
+    int fcntl(int fd, int cmd, ... /* struct flock *flockptr */);
+    
+    对于记录锁，cmd是F_GETTLK、F_SETTLK或F_SETTLKW。第三个参数(flockptr)是一个指向flock结构的指针。
+    struct flock{
+        short l_type; /* F_RDLCK, F_WRLCK, or F_UNLCK */
+        short l_whence; /* SEEK_SET, SEEK_CUR, or SEEK_END */
+        off_t l_start; /* offset in bytes, relative to l_whence */
+        off_t l_len; /* length, in bytes; 0 means lock to EOF */
+        pid_t l_pid; /* returned with F_GETTLK */
+    };
+    关于加锁或解锁区域的说明还有注意下列几项规则。
+    * 指定区域起始偏移量的两个元素与lseek函数中最后两个参数类似。
+    * 锁可以在当前文件尾端处开始或者越过尾端处开始，但是不能在文件起始位置之前开始。
+    * 如若l_len为0，则表示锁的范围可以扩展到最大可能偏移量。这就意味着不管向该文件中追加了多少数据，
+      它们都可以处于锁的范围内，而且起始位置可以是文件中的任意一个位置。
+    * 为了对整个文件加锁，我们设置l_start和l_whence指向文件的起始位置，并且指定长度(l_len)为0。
+
+      
+    有种类型的锁：共享读锁(l_type为L_RDLCK)和独占性写锁(L_WRLCK)。
+    | \                | 读锁 | 写锁 |
+    |------------------+------+------|
+    | 无锁             | 允许 | 允许 |
+    | 有一把或多把读锁 | 允许 | 拒绝 |
+    | 有一把写锁       | 拒绝 | 拒绝 |
+    以上兼容性表格适用于不同的进程提出的锁请求，并不适用于单个进程提出的多个锁请求。
+    如果一个进程对一个文件区间已经有一把锁，后来该进程又企图在同一文件区再加一把锁，那么新锁
+    将替换已有锁。
+*** 锁的隐含继承和释放
+*** FreeBSD的实现
+*** 在文件尾端加锁
+*** 建议性锁和强制性锁
 ** STREAMS
 ** I/O多路转换
 *** select和pselect函数
+*** 函数select和pselect
 *** poll函数
 ** 异步I/O
 *** 系统V异步I/O
