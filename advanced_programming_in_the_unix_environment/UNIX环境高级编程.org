@@ -2827,6 +2827,18 @@ int pthread_detach(pthread_t tid);
    最坏的情况下，让子进程的这些文件描述符保持打开状态会导致安全问题--被执行的程序可能有一些恶意行为。
    解决此问题的一个简单办法是对所有被执行程序不需要的文件描述符设置执行时关闭(close-on-exec)标志。
 * 第十四章 高级I/O
+** 非阻塞I/O
+** 记录锁
+** STREAMS
+** I/O多路转换
+*** select和pselect函数
+*** poll函数
+** 异步I/O
+*** 系统V异步I/O
+*** BSD异步I/O
+** readv和writev函数
+** readn和writen函数
+** 存储映射I/O
 * 第十五章 进程间通信
 * 第十六章 网络IPC:套接字
   **需要复习**
