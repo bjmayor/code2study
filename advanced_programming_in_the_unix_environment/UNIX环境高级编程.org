@@ -2919,9 +2919,6 @@ flock只支持针对整个文件加锁。
     需要警惕: 强制性锁可以避免。譬如按ed编辑器的方式，先内容写到临时文件，删除原文件，再重命名临时文件。强制性锁机制对unlink函数没有影响。
 ** STREAMS
 ** I/O多路转换
-*** select和pselect函数
-*** 函数select和pselect
-*** poll函数
     如果必须从两个描述符读，我们不能在任一个描述符上进行阻塞读(read),否则可能会因为阻塞在一个描述符的读操作
     上而导致另一个描述符即使有数据也无法处理。
     解决办法:
@@ -3001,6 +2998,95 @@ flock只支持针对整个文件加锁。
 ** 异步I/O
 *** 系统V异步I/O
 *** BSD异步I/O
+    由BSD和System V派生的所有系统都提供了某种形式的异步I/O,使用一个信号（在System V中是SIGPOLL,
+    在BSD中是SIGIO)通知进程，对某个描述符所关心的某个事情已经发生了。
+    这种形式的异步I/O是受限的：它们并不能用在所有的文件类型上，而且只能使用一个信号。
+    
+    使用POSIX异步I/O接口,会带来下列麻烦:
+    * 每个异步操作有3处可能产生错误的地方：
+      一处在操作提交的部分，一处在操作本身的结果，还有一处在用于决定异步操作状态的函数中。
+    * 与POSIX异步I/O接口的的传统方法相比，它们本身涉及大量的额外设置和处理规则。
+    * 从错误中恢复可能会比较困难。
+*** System V异步I/O
+    异步I/O是STREAMS系统的一部分，它只对STREAMS设备和STREAMS管道起作用。System V的异步I/O信号是SIGPOLL.
+    为了对一个STREAMS设备启动异步I/O,需要调用ioctl,将它的第二个参数设置成I_SETSIG。
+*** BSD异步I/O
+    在BSD派生的系统中，异步I/O是信号SIGIO和SIGURG的组合。SIGIO是通用异步I/O信号，SIGURG则只用来通知进程网络连接上的带外数据已经到达。
+    为了接收SIGIO信号，需要执行以下3步
+    1. 调用signal或sigaction为SIGIO信号建立信号处理程序。
+    2. 以命令F_SETOWN调用fcntl来设置进程ID或进程组ID,用于接收对于该描述符的信号。
+    3. 以命令F_SETFL调用fcntl设置O_ASYNC文件状态标志。使在该描述符上可以进行异步I/O。
+*** POSIX异步I/O
+    这些异步I/O接口使用AIO控制块来描述I/O操作。aiocb结构定义了AIO控制块。该结构至少包括下面这些字段:
+    struct aiocb {
+        int aio_fildes;/* file descriptor */
+        off_t aio_offset; /* file offset for I/O */
+        volatile void *aio_buf; /* buffer for I/O */
+        size_t aio_nbytes; /* number of bytes to transfer */
+        int aio_reqprio; /* priority */
+        struct sigevent aio_sigevent; /* signal information */
+        int aio_lio_opcode; /* operation for list I/O */
+    };
+    注意：异步I/O操作必须显式地指定偏移量。异步I/O接口并不影响由操作系统维护的文件偏移量。只要不在同一个进程里
+    把异步I/O函数和传统的I/O函数混在一起用在同一文件上，就不会导致什么问题。同时值得注意的是，如果使用异步I/O
+    接口向一个以追加模式(使用O_APPEND)打开的文件中写入数据，AIO控制块中的aio_offset字段会被系统忽略。
+    
+    aio_sigevent字段控制在I/O事件完成后，如何通知应用程序。使用sigevent结构描述
+    struct sigevent {
+        int sigev_notify;/* notify type, SIGEV_NONE,不通知；SIGEV_SIGNAL,产生由sigev_signo字段指定的信号
+                                          SIGEV_THREAD,由sigev_notify_function字段指定的函数被调用。*/
+        int sigev_signo;
+        union sigval sigev_value;/* notify argument */
+        void (*sigev_notify_function)(union sigval);
+        pthread_attr_t *sigev_notify_attributes;/* notify attrs */
+    }
+    
+    在进行异步I/O之前需要先初始化AIO控制块，调用aio_read函数来进行异步读操作，或调用aio_write函数来进行异步写操作。
+    #include <aio.h>
+    int aio_read(struct aiocb *aiocb);
+    int aio_write(struct aiocb *aiocb);
+    I/O操作在等待时，必须注意确保AIO控制块和数据库缓冲区保持稳定；它们下面对应的内存必须始终是合法的，
+    除非I/O操作完成，否则不能被复用。
+    
+    要想强制所有等待中的异步操作不等待而写入持久化的存储中，可以设立一个AIO控制块并调用aio_fsync函数。
+    #include <aio.h>
+    int aio_fsync(int op, struct aiocb *aiocb);
+    
+    为了获知一个异步读、写或者同步操作的完成状态，需要调用aio_error函数。
+    #include <aio.h>
+    int aio_error(const struct aiocb *aiocb);
+    返回值说明：
+    * 0 异步操作完成。需要调用aio_return函数获取操作返回值。
+    * -1 对aio_error调用失败。这种情况下,errno会告诉我们为什么。
+    * EINPROGRESS  异步读、写或同步操作仍在等待。
+    * 其他情况 其他任何返回值是相关的异步操作失败返回的错误码。
+      
+    #include <aio.h>
+    ssize_t aio_return(const struct aiocb *aiocb);
+    直到异步操作完成之前，都需要小心不要调用aio_return函数。操作完成之前的结果是未定义的。
+    还需要小心对每个异步操作只调用一次aio_return。一旦调用了该函数，操作系统就可以释放掉
+    包含了I/O操作返回值的记录。
+   
+    执行I/O操作时，如果还有其他事务要处理而不想被I/O操作阻塞，就可以使用异步I/O。然而，
+    如果在完成了所有事务时，还有异步操作未完成时，可以调用aio_suspend函数来阻塞进程，
+    直到操作完成。
+    #include <aio.h>
+    int aio_suspend(const struct aiocb *const list[], int nent, const struct timespec *timeout);
+    返回的情况：中断、超时、有任一I/O操作完成。
+    
+    当我们不想再完成的等待中的异步I/O操作时，可以尝试使用aio_cancel函数来取消它们。
+    #include <aio.h>
+    int aio_cancel(int fd, struct aiocb *aiocb);
+    返回值有4种：
+    * AIO_ALLDONE 所有操作在尝试取消它们之前已经完成。
+    * AIO_CANCELED 所有要求的操作已被取消。
+    * AIO_NOTCANCELED 至少有一个要求的操作没有被取消。
+    * -1 对aio_cancel的调用失败，错误码将被存储在errno中。
+   
+    lio_listio,提交一系统由一个AIO控制块列表描述的I/O请求。
+    #include <aio.h>
+    int lio_listio(int mode, struct aiocb *restrict const list[], int nent, struct sigevent *restrict sigev);
+    
 ** readv和writev函数
 ** readn和writen函数
 ** 存储映射I/O
