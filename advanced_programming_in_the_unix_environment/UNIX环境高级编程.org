@@ -3088,8 +3088,81 @@ flock只支持针对整个文件加锁。
     int lio_listio(int mode, struct aiocb *restrict const list[], int nent, struct sigevent *restrict sigev);
     
 ** readv和writev函数
+   readv和writev函数用于在一次函数调用中读、写多个非连续缓冲区。有时也将这两个函数
+   称为散步读(scatter read)和聚集写(gather write)。
+   #include <sys/uio.h>
+   ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+   ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+   这两个函数的第二个参数是指向iovec结构数组的一个指针：
+   struct iovec {
+       void *iov_base;
+       size_t iov_len;
+   }
+   iov数组中的元素数由iovcnt指定，其最大值受限于IOV_MAX。
 ** readn和writen函数
+   管道、FIFO以及某些设备(特别是终端和网络)有下列两种性质。
+   1. 一次read操作所返回的数据可能少于所要求的数据，即使还没达到文件尾端也可能是这样。
+      这不是一个错误，应当继续读该设备。
+   2. 一次write操作的返回值也可能少于指定输出的字节数。这可能是由某个因素造成的，
+      例如，内核输出缓冲区变满。这也不是错误，应当继续写余下的数据。
+     
+
+   readn和writen只是按需多次调用read和write直至读、写了N字节数据。
+   #include "apue.h"
+   ssize_t readn(int fd, void *buf, size_t nbytes);
+   ssize_t writen(int fd, void *buf, size_t nbytes);
+
 ** 存储映射I/O
+   存储映射I/O(memory-mapped I/O)能将一个磁盘文件映射到存储空间中的一个缓冲区上，
+   于是，当从缓冲区中取数据时，就相当于读文件中的相应字节。与此类似，将数据存入缓冲区时，
+   相应字节就自动写入文件。这样，就可以在不使用read和write的情况下执行I/O.
+   
+   为了使用这种功能，应首先告诉内核将一个给定的文件映射到一个存储区域中。这是由mmap函数
+   实现的。
+   #include <sys/mman.h>
+   void *mmap(void *addr, size_t len, int prot, int flag, int fd, off_t off);
+   
+   addr参数用于指定映射存储区的起始地址。通常将其设置为0，这表示由系统选择该映射区的起始
+   地址。此函数的返回值是该映射区的起始地址。
+   
+   fd参数是指定要被映射文件的描述符。在文件映射到地址空间之前，必须先打开该文件。
+   len参数是映射的字节数，off是要映射字节在文件中的起始偏移量。
+   prot参数指定了映射存储区的保护要求，
+   | prot       | 说明           |
+   |------------+----------------|
+   | PROT_READ  | 映射区可读     |
+   | PROT_WRITE | 映射区可写     |
+   | PROT_EXEC  | 映射区可执行   |
+   | PROT_NONE  | 映射区不可访问 |
+   对指定映射存储区的保护要求不能超过文件open模式访问权限。 
+   
+   flag参数:
+   MAP_FIXED 返回值必须等于addr。不利于移植性。一般设置为0
+   MAP_SHARED 这一标志描述了本进程对映射区所进行的存储操作的配置。此标志指定存储操作修改映射文件。
+   MAP_PRIVATE 本标志说明，对映射区的存储操作导致创建该映射文件的一个私有副本。
+   
+   与映射区相关的信号有SIGSEGV和SIGBUS。信号SIGSEGV通常用于指示进程试图访问对它不可用的存储区。
+   如果映射存储区被mmap指定成了只读的，那么进程试图将数据存入这个映射存储区的时候，也会产生此信号。
+   如果映射区的某个部分在访问时已不存在，则产生SIGBUS信号。
+  
+   调用mprotect可以更改一个现有映射的权限。
+   #include <sys/mman.h>
+   int mprotect(void *addr, size_t len, int prot);
+   需要注意，地址参数addr的值必须是系统页长的整数倍。
+   
+   如果共享映射中的页已修改，那么可以调用msync将该页冲洗到被映射的文件中 。
+   msync函数类似于fsync，但作用于存储映射区。
+   #include <sys/mman.h>
+   int msync(void *addr, size_t len, int flags);
+   
+   当进程终止时，会自动解除存储映射区的映射，或者直接调用munmap函数也可以解除映射区。
+   关闭映射存储区时使用的文件描述符并不解除映射区。
+   #include <sys/mman.h>
+   int munmap(void *addr, size_t len);
+   munmap并不影响被映射的对象，也就是说，调用munmap并不会使映射区的内容写到磁盘文件上。
+   对于MAP_SHARED区磁盘文件的更新，会在我们将数据写到存储映射区后的某个时刻，
+   按内核虚拟存储算法自动进行。在存储区解除映射后，对MAP_PRIVATE存储区的修改会被丢弃。
+   
 * 第十五章 进程间通信
 * 第十六章 网络IPC:套接字
   **需要复习**
