@@ -3211,8 +3211,18 @@ flock只支持针对整个文件加锁。
       
    在写管道(或FIFO)时，常量PIPE_BUF规定了内核的管道缓冲区大小。如果对管道调用write，而且要求写的
    字节数小于等于PIPE_BUF，则此操作不会与其他进程对同一管道(或FIFO)的write操作交叉进行。如果超过，则会。
-
+   
 ** 函数popen和pclose
+   常见的操作是创建一个连接到另一个进程的管道，然后读其输出或向其输入端面发送数据，为此，标准I/O库提供了
+   两个函数popen和pclose。这两个函数实现的操作是：创建一个管道，fork一个子进程，关闭未使用的管道端，
+   执行一个shell运行命令，然后等待命令终止。
+   #include <stdio.h>
+   FILE *popen(const char *cmdstring, const char *type);
+   int pclose(FILE *fp);
+   
+   函数popen先执行fork,然后调用exec执行cmdstring,并且返回一个标准I/O文件指针。如果type是"r",则文件指针连接到cmdstring的标准输出。
+   如果type是"w",则文件指针连接到cmdstring的标准输出。
+    
 ** 协同进程
 ** FIFO
 ** XSI IPC
