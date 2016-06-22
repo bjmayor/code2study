@@ -3230,6 +3230,7 @@ flock只支持针对整个文件加锁。
    一个接到其标准输入，另一个则来自其标准输出。
    我们想将数据写到其标准输入，经其处理后，再从其标准输出读取数据。
 ** FIFO
+   <2016-06-22 Wed>
    FIFO有时被称为命名管道。未命名的管道只能在两个相关的进程之间使用，而且这两个相关的进程还要有一个共同的创建了
    它们的祖先进程。但是，通过FIFO，不相关的进程也能交换数据。
    
@@ -3263,11 +3264,129 @@ flock只支持针对整个文件加锁。
    1. shell命令使用FIFO将数据从一条管道传送到另一条时，无需创建中间临时文件。
    2. 客户进程-服务器进程应用程序中，FIFO用作汇聚点，在客户进程和服务器进程二者之前传递数据。
 ** XSI IPC
+   有3种称为XSI IPC的IPC: 消息队列、信号量以及共享存储器。
 *** 标志符和键
+    每个内核中的IPC结构(消息队列、信号量或共享存储器)都用一个非负整数的标识符加以引用。
+    当一个IPC结构被创建，然后又被删除时，与这种结构相关的标识符连续加1，直至达到一个整型数的最大正值，然后又回转到0.
+    
+    标识符是IPC对象的内部名。为使多个合作进程能够在同一IPC对象上汇聚，需要提供一个外部命名方案。
+    为此，每个IPC对象都与一个键(key)相关联，将这个键作为该对象的外部名。
+    
+    无论何时创建IPC结构(通过调用msgget、semget或shmget创建),都应指定一个键。
+    这个键的数据类型是基本系统数据类型key_t,通常在头文件<sys/types.h>中被定义为长整型。这个键由内核变换成标识符。
+
+    有多种方法使客户进程和服务进程在同一IPC结构上汇聚。
+    1. 服务器进程指定键IPC_PRIVATE创建了个新IPC结构，然后将返回的标识符存放在某处(如文件)以
+       便客户进程取用。
+    2. 可以在一个公用头文件中定义一个客户和服务器进程都认可的键。然后服务器进程指定此键创建
+       一个新的IPC结构。问题是可能该键已与IPC结构相结合，服务器进程需要处理错误返回，删除已存在的IPC结构，然后试着
+       再创建它。
+    3. 客户进程和服务器进程认同一个路径名和项目ID(项目ID是0~255之间的字符值)。
+       接着调用函数ftok将这两个值转成一个键。然后使用方法2.
+       #include <sys/ipc.h>
+       key_t ftok(const char *path, int id);
+       path参数必须引用一个现有的文件。
+       
+       3个get函数(msgget、semget和shmget)都有两个类似的参数：一个key和一个整形flag。
+       在创建新的IPC结构时，如果key是IPC_PRIVATE或者和当前某种类型的IPC结构无关，则需要指明flag的IPC_CREAT标志位。
 *** 权限结构
+    XSI IPC为每一个IPC结构关联了一个ipc_perm结构。该结构规定了权限和所有者，它至少包括下列成员：
+    struct ipc_perm {
+        uid_t uid;/* owner's effective user id */
+        gid_t gid; /* owner's effective group id */
+        uid_t cuid; /* creator's effective user id */
+        gid_t cgid; /* creator's feective group id */
+        mode_t mode;/* access modes */
+    };
 *** 结构限制
+    所有3种形式的XSI IPC都有内置限制。大多数限制可以通过重新配置内核来改变。
+    在Linux中，可以运行ipcs -l 显示限制。
+    在FreeBSD中，等效的命令是ipcs -T。
 *** 优点和缺点
+    缺点：
+    1. IPC结构是在系统范围内起作用的，没有引用计数。
+       进程终止时，并不会删除其创建的消息队列和内容。
+       删除时机是：由某个进程调用msgrcv或msgctl读消息或删除消息队列；
+       或某个进程执行ipcrm命令删除消息队列；
+       或正在自举的系统删除消息队列。
+    2. 这些IPC结构在文件系统中没有名字。为了管理，增加了msgget、semop、shmat,ipcs,ipcrm等命令。
+    3. 由于这些形式的IPC不使用文件描述符，所以不能对它们使用多路转接I/O函数。
+
+    优点：
+    它们是可靠的、流控制的以及面向记录的；它们可以用非先进先出次序处理。
+
+    | IPC类型        | 无连接? | 可靠的? | 流控制? | 记录? | 消息类型或优先级? |
+    |----------------+---------+---------+---------+-------+-------------------|
+    | 消息队列       | 否      | 是      | 是      | 是    | 是                |
+    | STREAMS        | 否      | 是      | 是      | 是    | 是                |
+    | UNIX域流套接字 | 否      | 是      | 是      | 否    | 否                |
+    | UNIX域数据报套接字 | 是      | 是      | 否      | 是    | 否                |
+    | FIFO               | 否      | 是      | 是      | 是    | 否                |
+    "无连接"指无需调用打开函数就能发送消息。
+    "流控制"的意思是：如果系统资源(缓冲区)短缺，或者如果接收进程不能再接收更多消息，
+    则发送进程就要休眠。当流控制条件消失时，发送进程自动唤醒。
 ** 消息队列
+   消息队列是消息的链接表，存储在内核中，由消息队列标识符标识。
+   msgget用户创建一个新队列或打开一个现有队列。
+   msgsnd用于将消息添加到队列尾端。
+   msgrcv用于从队列中取消息。
+   
+   我们并不一定要以行进先出次序取消息，也可以按消息的类型字段取消息。
+   每个队列都有一个msqid_ds结构与其关联：
+   struct msqid_ds {
+       struct ipc_perm   msg_perm; 
+       msgqnum_t msg_qnum;/*  # of messages on queue */
+       msglen_t msg_qbytes; /* max # of bytes on queue */
+       pid_t msg_lspid; /*pid of last msgsnd() */
+       pid_t msg_lrpid; /* pid of last msgrcv() */
+       time_t msg_stime; /* last-msgsnd() time */
+       time_t msg_rtime; /* last-msgrcv() time */
+       time_t msg_ctime; /* last-change time */
+   };
+   
+   限制
+   | 说明                                                 | FreeBSD8.0 | Linux3.2.0 | Mac OS X 10.6.8 | Solaris 10 |
+   |------------------------------------------------------+------------+------------+-----------------+------------|
+   | 可发送的最长消息的字节数                             |      16384 |       8192 | 不支持          |       2048 |
+   | 一个特定队列的最大字节数(即队列中所有消息的长度之和) |       2048 |      16384 | 不支持          |       4096 |
+   | 系统中最大消息队列数                                 |         40 |         16 | 不支持          |         50 |
+   | 系统中最大消息数                                     |         40 |     导出的 | 不支持          |         40 |
+   #include <sys/msg.h>
+   int msgget(key_t key, int flag);
+   
+   垃圾桶函数
+   #include <sys/msg.h>
+   int msgctl(int msqid, int cmd, struct msqid_ds *buf);
+   cmd参数指定对msqid指定的队列要执行的命令：
+   IPC_STAT 取此队列的msqid_ds结构，并将它存放在buf指向的结构中。
+   IPC_SET 从字段msg_perm.uid、msg_perm.gid、msg_perm.mode和msg_qbytes从buf指向的结构
+           复制到这个队列相关的msqid_ds结构中。
+   IPC_RMID 从系统中删除该消息队列以及扔在该队列中的所有数据。这种删除立即生效。
+   
+   #include <sys/msg.h>
+   int msgsnd(int msqid, const void *ptr, size_t nbytes, int flag);
+   
+   每个消息都由3部分组成：一个正的长整型类型的字段、一个非负的长度(nbytes)以及实际数据字节数(对应于长度)。
+   若发送的最长消息是512字节，则可定义下列结构：
+   struct mymesg{
+       long mtype;
+       char mtext[512];
+   };
+   ptr就是一个指向mymesg结构的指针。
+   参数flag的值可以指定为IPC_NOWAIT,若消息队列已满，则指定的IPC_NOWAIT使得msgsnd立即出错返回EAGAIN。
+
+   msgrcv从队列中取消息。
+   #include <sys/msg.h>
+   ssize_t msgrcv(int msqid, void *ptr, size_t nbytes, long type, int falg);
+   若返回的消息长度大于ntyes,而且在flag中设置了MSG_NOERROR位，则该消息会被截断(消息被截去的部分丢弃)。如果没有设置这一标志，
+   而消息又太长，则出错返回E2BIG(消息仍留在队列中)。
+   
+   参数type可以指定想要哪一种消息。
+   type = 0 返回队列中的第一个消息。
+   type > 0 返回队列中消息类型为type的第一个消息。
+   type < 0 返回队列中消息类型小于等于type绝对值的消息，如果这种消息有若干个，则取类型值最小的消息。
+
+   ** 在新的应用程序中不应当再使用消息列表(无效率优势，又有各种缺陷) **
 ** 信号量
 ** 共享存储
 * 第十六章 网络IPC:套接字
