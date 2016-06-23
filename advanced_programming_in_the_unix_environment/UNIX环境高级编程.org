@@ -3388,6 +3388,95 @@ flock只支持针对整个文件加锁。
 
    ** 在新的应用程序中不应当再使用消息列表(无效率优势，又有各种缺陷) **
 ** 信号量
+   信号量与已经介绍过的IPC机构(管道、FIFO以及消息队列)不同。它是一个计数器，用于为多个进程提供对共享数据对象的访问。
+   
+   为了获得共享资源，进程需要执行下列操作。
+   1. 测试控制该资源的信号量。
+   2. 若此信号量的值为正，则进程可以使用该资源。在这种情况下，进程会将信号量减1,表示它使用了一个资源单位。
+   3. 否则，若此信号量的值为0，则进程进入休眠状态，直至信号量值大于0.进程被唤醒后，它返回到步骤1.
+      
+   当进程不再使用由一个信号量控制的共享资源时，该信号量值增1。如果有进程正在休眠等待此信号量，则唤醒它们。
+   
+   常用的信号量形式被称为二元信号量。它控制单个资源，其初始值为1。但是，一般而言，信号量的初值可以是任意一个正值，
+   该值表明有多少个共享资源单位可供共享应用。
+
+   实际要复杂很多，体现在：
+   1. 信号量并非是单个非负值，而必需定义为含有一个或多个信号量值的集合。当创建信号量时，要指定集合中信号量值的数量。
+   2. 信号量的创建(semget)是独立于它的初始化(semctl)的。这是一个致命的缺点，因为不能原子地创建一个信号量集合，
+      并且对该集合中的各个信号量值赋初值。
+   3. 即使没有进程正在使用各种形式的XSI IPC, 它们仍然是存在的。有的程序在终止时并没有释放已经分配给它的信号量，
+      所以我们不得不为这种程序担心。
+      
+      
+   内核为每个信号量集合维护着一个semid_ds结构：
+   struct semid_ds {
+       struct ipc_perm sem_perm; /* see Section 15.6.2 */
+       unsigned short sem_nsems; /* # of semaphores in set */
+       time_t sem_otime; /* last-semop() time */
+       time_t sem_ctime; /* last-change time */
+   };
+   
+   每个信号量由一个无名结构表示，它至少包含下列成员：
+   struct {
+       unsigned  short semval; /* semaphore value, always >=0 */
+       pid_t sempid;  /* pid for last operation */
+       unsigned short semncnt; /* # processes awaiting semval>curval */
+       unsigned short semzcnt; /* # processes awaiting semval==0 */
+   };
+   
+   信号量的系统限制
+   | 说明               | FreeBSD8.0 | Linux 3.2.0 | Mac OS X 10.6.8 | Solaris 10 |
+   |--------------------+------------+-------------+-----------------+------------|
+   | 任一信号量的最大值 |            |             |                 |            |
+   | 任一信号量的最大退出时的调整值 |            |             |                 |            |
+   | 系统中信号量集的最大数量       |            |             |                 |            |
+   | 系统中信号量的最大数量         |            |             |                 |            |
+   | 每个信号量集中的信号量的最大数量 |            |             |                 |            |
+   | 系统中undo结构的最大数量         |            |             |                 |            |
+   | 每个undo结构中undo项的最大数量   |            |             |                 |            |
+   | 每个semop调用中操作的最大数量    |            |             |                 |            |
+
+   调用semget来获得一个信号量ID。
+   #include <sys/sem.h>
+   int semget(key_t key, int nsems, int flag);
+   nsems是该集合中的信号量数。如果是创建新集合，则必须指定nsems。如果是引用现有集合，则将nsems指定为0.
+
+   semctl函数包含了多种信号量操作。
+   #include <sys/sem.h>
+   int semctl(int semid, int semnum, int cmd, ... /* union semun arg */);
+   cmd参数是下列10个命令中的一种。这些命令是运行在semid指定的信号量集合上的。其中有5个命令是针对一个特定
+   的信号量值的，它们用semnum指定该信号量集合中的一个成员。semnum值在0和nsems-1之间，包括0和nsems-1。
+   IPC_STAT 对此信集合取semid_ds结构，并存储在由arg.buf指向的结构中。
+   IPC_SET 按arg.buf指向的结构中的值，设置与此集合相关的结构中的sem_perm.uid\sem_perm.gid和sem_perm.mode字段
+   IPC_RMID 从系统中删除该信号量集合
+   GETVAL 返回成员semnum的semval值。
+   SETVAL 设置成员semnum的setval值。该值由arg.val指定
+   GETPID 返回成员semnum的sempid值。
+   GETNCNT 返回成员semnum的semncnt值。
+   GETZCNT 返回成员semnum的semzcnt值。
+   GETALL 取该集合中所有的信号量值。这些值存储在arg.array指向的数组中。
+   SETALL 将该集合中所有的信号量值设置成arg.array指向的数组中的值。
+   
+   #include <sys/sem.h>
+   int semop(int semid, struct sembuf semoparray[], size_t nops);
+   struct sembuf {
+       unsigned short sem_num;/* member # in set {0,1,... nsems-1}*/
+       short sem_op; /* operation(negative,0, or pasitive */
+       short sem_flg; /* IPC_NOWAIT, SEM_UNDO */
+   };
+   
+   semop函数具有原子操作，它或者执行数组中的所有操作，或者一个也不做。
+   
+   exit时的信号量调整
+   无论何时只要为信号量操作指定了SEM_UNDO标志，然后分配资源(sem_op值小于0),那么内核就会记住对于该特定信号量，
+   分配给调用进程多少资源(sem_op的绝对值)。当该进程终止时，不论自愿或者不自愿，内核都将检验该进程是否还有尚未处理的
+   信号量调整值，如果有，则按调整值对相应信号量进行处理。
+
+   如果在多个进程间共享一个资源，可使用信号量、记录锁和互斥量三种技术中的一种来协调访问。
+   效率上， 共享存储中的互斥量>建议性记录锁>带undo的信号量。
+   实际中我们更倾向于使用记录锁：
+   1. 在多个进程间共享的内存中使用互斥量来恢复一个终止的进程更难。
+   2. 进程共享的互斥量属性还没有得到普遍支持。
 ** 共享存储
 * 第十六章 网络IPC:套接字
   ** 复习 **　
