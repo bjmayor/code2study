@@ -16,4 +16,6 @@ main()
     printf("signed int:%f~%f, unsigned int:%d~%f\n",-pow(2,(sizeof(int)*8-1)),pow(2,(sizeof(int)*8-1))-1,0,pow(2,sizeof(int)*8)-1);
     printf("signed long:%f~%Lf, unsigned long:%d~%Lf\n",-pow(2,(sizeof(long)*8-1)),pow(2,(sizeof(long)*8-1))-1.0l,0,pow(2,sizeof(long)*8)-1.0l);
 
+    printf("%d\n", '\0');
+
 }
