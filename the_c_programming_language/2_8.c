@@ -6,6 +6,7 @@ main()
 }
 unsigned int rightrot(unsigned int x ,int n)
 {
+    /*
     int number = 0;
     int temp = x;
     while(temp>0)
@@ -14,4 +15,6 @@ unsigned int rightrot(unsigned int x ,int n)
         number++;
     }
     return ((~(~0<<number)) &  x<<(number-n)) | x>>n;
+    */
+    return ~(~0<<n)&x << 32-n  | x>>n;
 }

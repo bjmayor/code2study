@@ -2,7 +2,7 @@
 int setbits(unsigned int x,int p,int n,unsigned int y);
 main()
 {
-    printf("result is %d\n", setbits(51,3,2,3));
+    printf("result is %x\n", setbits(51,3,2,3));
 }
 int setbits(unsigned int x,int p,int n,unsigned int y)
 {

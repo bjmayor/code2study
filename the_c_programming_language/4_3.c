@@ -28,6 +28,7 @@ main()
 
     while ((type = getop(s)) != EOF)
     {
+        printf("%c, %s\n",type,s);
         switch (type)
         {
         case NUMBER:
@@ -122,6 +123,19 @@ int getop(char s[])
     if (isdigit(c) || c=='-')
     {
         while(isdigit(s[++i] = c = getch()));
+    }
+    if (c == ' ' && i==1)
+    {
+        ungetch(c);
+        s[1] = '\0';
+        if (s[0]=='-')
+        {
+            return '-';
+        }
+        else
+        {
+            return NUMBER;
+        }
     }
 
     if (c == '.')
